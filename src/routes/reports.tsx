@@ -1,72 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { mockReports } from "@/lib/mock-data";
-import { useAuth } from "@/lib/auth";
-import { ROLES } from "@/lib/roles";
+import { getWorkflowState, generateDraftReportText } from "@/lib/diskdiff-store";
 
-export const Route = createFileRoute("/reports")({
-  head: () => ({
-    meta: [
-      { title: "Reports — DiskDiff Reader" },
-      { name: "description", content: "Draft, pending review, and authorised AST reports." },
-    ],
-  }),
-  component: ReportsPage,
-});
-
-function variant(status: string): "default" | "secondary" | "outline" {
-  if (status === "Authorised") return "default";
-  if (status === "Pending Review") return "secondary";
-  return "outline";
-}
+export const Route = createFileRoute("/reports")({ component: ReportsPage });
 
 function ReportsPage() {
-  const { user } = useAuth();
-  const role = user?.role ?? ROLES.VIEWER;
-  const isConsultant = role === "Consultant Microbiologist";
-  const isMLS = role === "Medical Laboratory Scientist";
-  return (
-    <div>
-      <PageHeader title="Reports" description="Draft AST reports remain unreleased until a Consultant Microbiologist authorises them." />
-      <div className="p-6">
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Report</TableHead>
-                  <TableHead>Sample</TableHead>
-                  <TableHead>Organism</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Updated</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockReports.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-mono">{r.id}</TableCell>
-                    <TableCell className="font-mono text-xs">{r.sample}</TableCell>
-                    <TableCell>{r.organism}</TableCell>
-                    <TableCell><Badge variant={variant(r.status)}>{r.status}</Badge></TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{r.updated}</TableCell>
-                    <TableCell className="text-right">
-                      {r.status === "Draft" && isMLS && <Button size="sm" variant="outline">Submit for review</Button>}
-                      {r.status === "Pending Review" && isConsultant && <Button size="sm">Authorise</Button>}
-                      {r.status === "Pending Review" && !isConsultant && <span className="text-xs text-muted-foreground">Awaiting consultant</span>}
-                      {r.status === "Authorised" && <Button size="sm" variant="ghost">View</Button>}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+  const { currentPlate } = getWorkflowState();
+  return <div><PageHeader title="Reports" description="Draft report generation only. Final release requires authorised review." /><div className="p-6"><Card><CardHeader><CardTitle className="text-base">Draft report</CardTitle></CardHeader><CardContent className="space-y-3"><Badge variant="outline">Draft: not for clinical release</Badge><p className="text-sm text-muted-foreground">Current plate: {currentPlate?.accessionNumber ?? "No plate selected"}</p><Textarea value={generateDraftReportText()} readOnly rows={14} /></CardContent></Card></div></div>;
 }
