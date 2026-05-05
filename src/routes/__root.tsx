@@ -1,10 +1,18 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-
-import appCss from "../styles.css?url";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import {
+  HeadContent,
+  Link,
+  Navigate,
+  Outlet,
+  Scripts,
+  createRootRoute,
+  useRouterState,
+} from "@tanstack/react-router";
 import { AppHeader } from "@/components/app-header";
-import { RoleProvider } from "@/lib/roles";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { canAccessRoute } from "@/lib/access-control";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
   return (
@@ -13,7 +21,7 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          The page you are looking for does not exist or has been moved.
         </p>
         <div className="mt-6">
           <Link
@@ -34,23 +42,12 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "DiskDiff Reader" },
-      { name: "description", content: "Clinical decision-support tool for reading Kirby-Bauer / EUCAST disk diffusion plates." },
-      { property: "og:title", content: "DiskDiff Reader" },
-      { property: "og:description", content: "Clinical decision-support tool for reading Kirby-Bauer / EUCAST disk diffusion plates." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "DiskDiff Reader" },
-      { name: "twitter:description", content: "Clinical decision-support tool for reading Kirby-Bauer / EUCAST disk diffusion plates." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/76922bdf-7363-4137-8721-d8a00e88f9fc/id-preview-8bcfec7a--e8d941e2-0be6-4c56-8041-f54d1f751b55.lovable.app-1777977654332.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/76922bdf-7363-4137-8721-d8a00e88f9fc/id-preview-8bcfec7a--e8d941e2-0be6-4c56-8041-f54d1f751b55.lovable.app-1777977654332.png" },
-    ],
-    links: [
       {
-        rel: "stylesheet",
-        href: appCss,
+        name: "description",
+        content: "Clinical decision-support tool for reading Kirby-Bauer / EUCAST disk diffusion plates.",
       },
     ],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -71,21 +68,40 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function RootComponent() {
+function ProtectedLayout() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="p-8 text-sm text-muted-foreground">Checking session...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" search={{ redirect: path }} replace />;
+  }
+
+  if (!canAccessRoute(user.role, path)) {
+    return <Navigate to="/access-denied" replace />;
+  }
+
   return (
-    <RoleProvider>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-background">
-          <AppSidebar />
-          <SidebarInset className="flex flex-1 flex-col">
-            <AppHeader />
-            <main className="flex-1">
-              <Outlet />
-            </main>
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
-    </RoleProvider>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <AppSidebar />
+        <SidebarInset className="flex flex-1 flex-col">
+          <AppHeader />
+          <main className="flex-1">
+            <Outlet />
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }
 
+function RootComponent() {
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const isPublicRoute = path === "/login" || path === "/access-denied";
+
+  return <AuthProvider>{isPublicRoute ? <Outlet /> : <ProtectedLayout />}</AuthProvider>;
+}
