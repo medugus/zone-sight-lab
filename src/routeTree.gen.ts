@@ -9,8 +9,56 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as QcStrainsRouteImport } from './routes/qc-strains'
+import { Route as QcPlateRouteImport } from './routes/qc-plate'
+import { Route as MeasureRouteImport } from './routes/measure'
+import { Route as InterpretRouteImport } from './routes/interpret'
+import { Route as CaptureRouteImport } from './routes/capture'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QcStrainsRoute = QcStrainsRouteImport.update({
+  id: '/qc-strains',
+  path: '/qc-strains',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QcPlateRoute = QcPlateRouteImport.update({
+  id: '/qc-plate',
+  path: '/qc-plate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeasureRoute = MeasureRouteImport.update({
+  id: '/measure',
+  path: '/measure',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InterpretRoute = InterpretRouteImport.update({
+  id: '/interpret',
+  path: '/interpret',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaptureRoute = CaptureRouteImport.update({
+  id: '/capture',
+  path: '/capture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +67,144 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
+  '/capture': typeof CaptureRoute
+  '/interpret': typeof InterpretRoute
+  '/measure': typeof MeasureRoute
+  '/qc-plate': typeof QcPlateRoute
+  '/qc-strains': typeof QcStrainsRoute
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
+  '/capture': typeof CaptureRoute
+  '/interpret': typeof InterpretRoute
+  '/measure': typeof MeasureRoute
+  '/qc-plate': typeof QcPlateRoute
+  '/qc-strains': typeof QcStrainsRoute
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
+  '/capture': typeof CaptureRoute
+  '/interpret': typeof InterpretRoute
+  '/measure': typeof MeasureRoute
+  '/qc-plate': typeof QcPlateRoute
+  '/qc-strains': typeof QcStrainsRoute
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/audit'
+    | '/capture'
+    | '/interpret'
+    | '/measure'
+    | '/qc-plate'
+    | '/qc-strains'
+    | '/reports'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/audit'
+    | '/capture'
+    | '/interpret'
+    | '/measure'
+    | '/qc-plate'
+    | '/qc-strains'
+    | '/reports'
+    | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/audit'
+    | '/capture'
+    | '/interpret'
+    | '/measure'
+    | '/qc-plate'
+    | '/qc-strains'
+    | '/reports'
+    | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuditRoute: typeof AuditRoute
+  CaptureRoute: typeof CaptureRoute
+  InterpretRoute: typeof InterpretRoute
+  MeasureRoute: typeof MeasureRoute
+  QcPlateRoute: typeof QcPlateRoute
+  QcStrainsRoute: typeof QcStrainsRoute
+  ReportsRoute: typeof ReportsRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qc-strains': {
+      id: '/qc-strains'
+      path: '/qc-strains'
+      fullPath: '/qc-strains'
+      preLoaderRoute: typeof QcStrainsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qc-plate': {
+      id: '/qc-plate'
+      path: '/qc-plate'
+      fullPath: '/qc-plate'
+      preLoaderRoute: typeof QcPlateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/measure': {
+      id: '/measure'
+      path: '/measure'
+      fullPath: '/measure'
+      preLoaderRoute: typeof MeasureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/interpret': {
+      id: '/interpret'
+      path: '/interpret'
+      fullPath: '/interpret'
+      preLoaderRoute: typeof InterpretRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/capture': {
+      id: '/capture'
+      path: '/capture'
+      fullPath: '/capture'
+      preLoaderRoute: typeof CaptureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,16 +217,15 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuditRoute: AuditRoute,
+  CaptureRoute: CaptureRoute,
+  InterpretRoute: InterpretRoute,
+  MeasureRoute: MeasureRoute,
+  QcPlateRoute: QcPlateRoute,
+  QcStrainsRoute: QcStrainsRoute,
+  ReportsRoute: ReportsRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
