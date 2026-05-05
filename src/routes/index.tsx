@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { useRole } from "@/lib/roles";
+import { useAuth } from "@/lib/auth";
+import { ROLES } from "@/lib/roles";
 import { mockReports, mockAudit, qcStrains, mockUsers } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/")({
@@ -18,7 +19,8 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { role } = useRole();
+  const { user } = useAuth();
+  const role = user?.role ?? ROLES.VIEWER;
   const pending = mockReports.filter((r) => r.status === "Pending Review");
   const drafts = mockReports.filter((r) => r.status === "Draft");
   const authorised = mockReports.filter((r) => r.status === "Authorised");

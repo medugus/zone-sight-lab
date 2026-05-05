@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { mockReports } from "@/lib/mock-data";
-import { useRole } from "@/lib/roles";
+import { useAuth } from "@/lib/auth";
+import { ROLES } from "@/lib/roles";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({
@@ -24,7 +25,8 @@ function variant(status: string): "default" | "secondary" | "outline" {
 }
 
 function ReportsPage() {
-  const { role } = useRole();
+  const { user } = useAuth();
+  const role = user?.role ?? ROLES.VIEWER;
   const isConsultant = role === "Consultant Microbiologist";
   const isMLS = role === "Medical Laboratory Scientist";
   return (
