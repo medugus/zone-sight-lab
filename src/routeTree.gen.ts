@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as QcPlateRouteImport } from './routes/qc-plate'
 import { Route as MeasureRouteImport } from './routes/measure'
+import { Route as InterpretRouteImport } from './routes/interpret'
 import { Route as CaptureRouteImport } from './routes/capture'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -22,6 +23,11 @@ const QcPlateRoute = QcPlateRouteImport.update({
 const MeasureRoute = MeasureRouteImport.update({
   id: '/measure',
   path: '/measure',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InterpretRoute = InterpretRouteImport.update({
+  id: '/interpret',
+  path: '/interpret',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CaptureRoute = CaptureRouteImport.update({
@@ -38,12 +44,14 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/capture': typeof CaptureRoute
+  '/interpret': typeof InterpretRoute
   '/measure': typeof MeasureRoute
   '/qc-plate': typeof QcPlateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/capture': typeof CaptureRoute
+  '/interpret': typeof InterpretRoute
   '/measure': typeof MeasureRoute
   '/qc-plate': typeof QcPlateRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/capture': typeof CaptureRoute
+  '/interpret': typeof InterpretRoute
   '/measure': typeof MeasureRoute
   '/qc-plate': typeof QcPlateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/capture' | '/measure' | '/qc-plate'
+  fullPaths: '/' | '/capture' | '/interpret' | '/measure' | '/qc-plate'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/capture' | '/measure' | '/qc-plate'
-  id: '__root__' | '/' | '/capture' | '/measure' | '/qc-plate'
+  to: '/' | '/capture' | '/interpret' | '/measure' | '/qc-plate'
+  id: '__root__' | '/' | '/capture' | '/interpret' | '/measure' | '/qc-plate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CaptureRoute: typeof CaptureRoute
+  InterpretRoute: typeof InterpretRoute
   MeasureRoute: typeof MeasureRoute
   QcPlateRoute: typeof QcPlateRoute
 }
@@ -83,6 +93,13 @@ declare module '@tanstack/react-router' {
       path: '/measure'
       fullPath: '/measure'
       preLoaderRoute: typeof MeasureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/interpret': {
+      id: '/interpret'
+      path: '/interpret'
+      fullPath: '/interpret'
+      preLoaderRoute: typeof InterpretRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/capture': {
@@ -105,9 +122,19 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CaptureRoute: CaptureRoute,
+  InterpretRoute: InterpretRoute,
   MeasureRoute: MeasureRoute,
   QcPlateRoute: QcPlateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
