@@ -1,0 +1,37 @@
+import { ALL_ROLES, ROLES, type Role } from "@/lib/roles";
+
+export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
+  "/": ALL_ROLES,
+  "/dashboard": ALL_ROLES,
+  "/capture": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST, ROLES.MEDICAL_LABORATORY_SCIENTIST],
+  "/plate-capture": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST, ROLES.MEDICAL_LABORATORY_SCIENTIST],
+  "/qc-plate": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST, ROLES.MEDICAL_LABORATORY_SCIENTIST],
+  "/plate-qc": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST, ROLES.MEDICAL_LABORATORY_SCIENTIST],
+  "/measure": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST, ROLES.MEDICAL_LABORATORY_SCIENTIST],
+  "/zone-measurement": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST, ROLES.MEDICAL_LABORATORY_SCIENTIST],
+  "/interpret": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST],
+  "/eucast": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST],
+  "/eucast/import": [ROLES.ADMIN],
+  "/qc": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST, ROLES.QUALITY_OFFICER, ROLES.MEDICAL_LABORATORY_SCIENTIST],
+  "/qc-strains": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST, ROLES.QUALITY_OFFICER, ROLES.MEDICAL_LABORATORY_SCIENTIST],
+  "/reports": ALL_ROLES,
+  "/reports/authorise": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST],
+  "/validation": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST, ROLES.QUALITY_OFFICER],
+  "/audit": [ROLES.ADMIN, ROLES.CONSULTANT_MICROBIOLOGIST, ROLES.QUALITY_OFFICER],
+  "/settings": [ROLES.ADMIN],
+};
+
+const ROUTE_KEYS = Object.keys(ROUTE_PERMISSIONS).sort((a, b) => b.length - a.length);
+
+const isSegmentPrefix = (base: string, path: string) => path === base || path.startsWith(`${base}/`);
+
+export function canAccessRoute(role: Role, path: string): boolean {
+  for (const key of ROUTE_KEYS) {
+    if (isSegmentPrefix(key, path)) return ROUTE_PERMISSIONS[key].includes(role);
+  }
+  return false;
+}
+
+export function canAuthoriseFinalReport(role: Role): boolean {
+  return role === ROLES.ADMIN || role === ROLES.CONSULTANT_MICROBIOLOGIST;
+}

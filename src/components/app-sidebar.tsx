@@ -1,14 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard,
   Camera,
-  ShieldCheck,
-  Ruler,
-  FlaskConical,
-  Microscope,
   FileText,
+  FlaskConical,
+  LayoutDashboard,
+  Microscope,
+  Ruler,
   ScrollText,
   Settings,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -21,6 +21,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/lib/auth";
+import { canAccessRoute } from "@/lib/access-control";
 
 const workflow = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -33,13 +35,18 @@ const workflow = [
 const lab = [
   { title: "QC Strains", url: "/qc-strains", icon: FlaskConical },
   { title: "Reports", url: "/reports", icon: FileText },
+  { title: "Report Authorisation", url: "/reports/authorise", icon: FileText },
   { title: "Audit Trail", url: "/audit", icon: ScrollText },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const { user } = useAuth();
+
   const isActive = (url: string) => (url === "/" ? path === "/" : path.startsWith(url));
+  const filterByRole = <T extends { url: string }>(items: T[]) =>
+    items.filter((item) => (user ? canAccessRoute(user.role, item.url) : false));
 
   const renderItems = (items: typeof workflow) => (
     <SidebarMenu>
@@ -59,24 +66,16 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-            D
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold text-foreground">DiskDiff Reader</span>
-            <span className="text-[10px] text-muted-foreground">Clinical decision support</span>
-          </div>
-        </div>
+        <div className="px-2 py-3 text-sm font-semibold">DiskDiff Reader</div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Workflow</SidebarGroupLabel>
-          <SidebarGroupContent>{renderItems(workflow)}</SidebarGroupContent>
+          <SidebarGroupContent>{renderItems(filterByRole(workflow))}</SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>Laboratory</SidebarGroupLabel>
-          <SidebarGroupContent>{renderItems(lab)}</SidebarGroupContent>
+          <SidebarGroupContent>{renderItems(filterByRole(lab))}</SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
