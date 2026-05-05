@@ -15,6 +15,7 @@ import { Route as QcPlateRouteImport } from './routes/qc-plate'
 import { Route as MeasureRouteImport } from './routes/measure'
 import { Route as InterpretRouteImport } from './routes/interpret'
 import { Route as CaptureRouteImport } from './routes/capture'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ReportsRoute = ReportsRouteImport.update({
@@ -47,6 +48,11 @@ const CaptureRoute = CaptureRouteImport.update({
   path: '/capture',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -55,6 +61,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/capture': typeof CaptureRoute
   '/interpret': typeof InterpretRoute
   '/measure': typeof MeasureRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/capture': typeof CaptureRoute
   '/interpret': typeof InterpretRoute
   '/measure': typeof MeasureRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/capture': typeof CaptureRoute
   '/interpret': typeof InterpretRoute
   '/measure': typeof MeasureRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/audit'
     | '/capture'
     | '/interpret'
     | '/measure'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/audit'
     | '/capture'
     | '/interpret'
     | '/measure'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/audit'
     | '/capture'
     | '/interpret'
     | '/measure'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuditRoute: typeof AuditRoute
   CaptureRoute: typeof CaptureRoute
   InterpretRoute: typeof InterpretRoute
   MeasureRoute: typeof MeasureRoute
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CaptureRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -177,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuditRoute: AuditRoute,
   CaptureRoute: CaptureRoute,
   InterpretRoute: InterpretRoute,
   MeasureRoute: MeasureRoute,
