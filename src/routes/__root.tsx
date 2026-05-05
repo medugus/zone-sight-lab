@@ -36,10 +36,14 @@ export const Route = createRootRoute({
       { title: "DiskDiff Reader" },
       { name: "description", content: "Clinical decision-support tool for reading Kirby-Bauer / EUCAST disk diffusion plates." },
       { property: "og:title", content: "DiskDiff Reader" },
-      { property: "og:description", content: "Supervised reading of disk diffusion plates with EUCAST interpretation." },
+      { property: "og:description", content: "Clinical decision-support tool for reading Kirby-Bauer / EUCAST disk diffusion plates." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "DiskDiff Reader" },
+      { name: "twitter:description", content: "Clinical decision-support tool for reading Kirby-Bauer / EUCAST disk diffusion plates." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/76922bdf-7363-4137-8721-d8a00e88f9fc/id-preview-8bcfec7a--e8d941e2-0be6-4c56-8041-f54d1f751b55.lovable.app-1777977654332.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/76922bdf-7363-4137-8721-d8a00e88f9fc/id-preview-8bcfec7a--e8d941e2-0be6-4c56-8041-f54d1f751b55.lovable.app-1777977654332.png" },
     ],
     links: [
       {
