@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QcStrainsRouteImport } from './routes/qc-strains'
 import { Route as QcPlateRouteImport } from './routes/qc-plate'
 import { Route as MeasureRouteImport } from './routes/measure'
@@ -16,6 +17,11 @@ import { Route as InterpretRouteImport } from './routes/interpret'
 import { Route as CaptureRouteImport } from './routes/capture'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const QcStrainsRoute = QcStrainsRouteImport.update({
   id: '/qc-strains',
   path: '/qc-strains',
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/measure': typeof MeasureRoute
   '/qc-plate': typeof QcPlateRoute
   '/qc-strains': typeof QcStrainsRoute
+  '/reports': typeof ReportsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/measure': typeof MeasureRoute
   '/qc-plate': typeof QcPlateRoute
   '/qc-strains': typeof QcStrainsRoute
+  '/reports': typeof ReportsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/measure': typeof MeasureRoute
   '/qc-plate': typeof QcPlateRoute
   '/qc-strains': typeof QcStrainsRoute
+  '/reports': typeof ReportsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,8 +90,16 @@ export interface FileRouteTypes {
     | '/measure'
     | '/qc-plate'
     | '/qc-strains'
+    | '/reports'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/capture' | '/interpret' | '/measure' | '/qc-plate' | '/qc-strains'
+  to:
+    | '/'
+    | '/capture'
+    | '/interpret'
+    | '/measure'
+    | '/qc-plate'
+    | '/qc-strains'
+    | '/reports'
   id:
     | '__root__'
     | '/'
@@ -91,6 +108,7 @@ export interface FileRouteTypes {
     | '/measure'
     | '/qc-plate'
     | '/qc-strains'
+    | '/reports'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -100,10 +118,18 @@ export interface RootRouteChildren {
   MeasureRoute: typeof MeasureRoute
   QcPlateRoute: typeof QcPlateRoute
   QcStrainsRoute: typeof QcStrainsRoute
+  ReportsRoute: typeof ReportsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/qc-strains': {
       id: '/qc-strains'
       path: '/qc-strains'
@@ -156,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   MeasureRoute: MeasureRoute,
   QcPlateRoute: QcPlateRoute,
   QcStrainsRoute: QcStrainsRoute,
+  ReportsRoute: ReportsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
