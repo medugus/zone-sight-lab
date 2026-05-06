@@ -14,9 +14,11 @@ import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QcStrainsRouteImport } from './routes/qc-strains'
 import { Route as QcPlateRouteImport } from './routes/qc-plate'
 import { Route as MeasureRouteImport } from './routes/measure'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as InterpretRouteImport } from './routes/interpret'
 import { Route as CaptureRouteImport } from './routes/capture'
 import { Route as AuditRouteImport } from './routes/audit'
+import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -44,6 +46,11 @@ const MeasureRoute = MeasureRouteImport.update({
   path: '/measure',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InterpretRoute = InterpretRouteImport.update({
   id: '/interpret',
   path: '/interpret',
@@ -59,6 +66,11 @@ const AuditRoute = AuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccessDeniedRoute = AccessDeniedRouteImport.update({
+  id: '/access-denied',
+  path: '/access-denied',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -67,9 +79,11 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/access-denied': typeof AccessDeniedRoute
   '/audit': typeof AuditRoute
   '/capture': typeof CaptureRoute
   '/interpret': typeof InterpretRoute
+  '/login': typeof LoginRoute
   '/measure': typeof MeasureRoute
   '/qc-plate': typeof QcPlateRoute
   '/qc-strains': typeof QcStrainsRoute
@@ -78,9 +92,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/access-denied': typeof AccessDeniedRoute
   '/audit': typeof AuditRoute
   '/capture': typeof CaptureRoute
   '/interpret': typeof InterpretRoute
+  '/login': typeof LoginRoute
   '/measure': typeof MeasureRoute
   '/qc-plate': typeof QcPlateRoute
   '/qc-strains': typeof QcStrainsRoute
@@ -90,9 +106,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/access-denied': typeof AccessDeniedRoute
   '/audit': typeof AuditRoute
   '/capture': typeof CaptureRoute
   '/interpret': typeof InterpretRoute
+  '/login': typeof LoginRoute
   '/measure': typeof MeasureRoute
   '/qc-plate': typeof QcPlateRoute
   '/qc-strains': typeof QcStrainsRoute
@@ -103,9 +121,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/access-denied'
     | '/audit'
     | '/capture'
     | '/interpret'
+    | '/login'
     | '/measure'
     | '/qc-plate'
     | '/qc-strains'
@@ -114,9 +134,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/access-denied'
     | '/audit'
     | '/capture'
     | '/interpret'
+    | '/login'
     | '/measure'
     | '/qc-plate'
     | '/qc-strains'
@@ -125,9 +147,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/access-denied'
     | '/audit'
     | '/capture'
     | '/interpret'
+    | '/login'
     | '/measure'
     | '/qc-plate'
     | '/qc-strains'
@@ -137,9 +161,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccessDeniedRoute: typeof AccessDeniedRoute
   AuditRoute: typeof AuditRoute
   CaptureRoute: typeof CaptureRoute
   InterpretRoute: typeof InterpretRoute
+  LoginRoute: typeof LoginRoute
   MeasureRoute: typeof MeasureRoute
   QcPlateRoute: typeof QcPlateRoute
   QcStrainsRoute: typeof QcStrainsRoute
@@ -184,6 +210,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MeasureRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/interpret': {
       id: '/interpret'
       path: '/interpret'
@@ -205,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/access-denied': {
+      id: '/access-denied'
+      path: '/access-denied'
+      fullPath: '/access-denied'
+      preLoaderRoute: typeof AccessDeniedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -217,9 +257,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccessDeniedRoute: AccessDeniedRoute,
   AuditRoute: AuditRoute,
   CaptureRoute: CaptureRoute,
   InterpretRoute: InterpretRoute,
+  LoginRoute: LoginRoute,
   MeasureRoute: MeasureRoute,
   QcPlateRoute: QcPlateRoute,
   QcStrainsRoute: QcStrainsRoute,
@@ -229,3 +271,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
