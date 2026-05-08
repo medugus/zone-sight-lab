@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { useAuth } from "@/lib/auth";
 import { ROLES } from "@/lib/roles";
+import { Activity, FileCheck2, FlaskConical, ScrollText } from "lucide-react";
 import { mockReports, mockAudit, qcStrains, mockUsers } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/")({
@@ -28,15 +29,16 @@ function Index() {
   return (
     <div>
       <PageHeader
-        title={`Welcome, ${role}`}
-        description="DiskDiff Reader assists supervised reading of Kirby-Bauer / EUCAST disk diffusion plates. No report is released without authorisation."
+        eyebrow={`Signed in · ${role}`}
+        title={`Welcome back, ${user?.full_name?.split(" ")[0] ?? "Operator"}.`}
+        description="DiskDiff Reader assists supervised reading of Kirby-Bauer / EUCAST disk diffusion plates. Every release is reviewed and authorised."
       />
       <div className="p-6 space-y-6">
         <div className="grid gap-4 md:grid-cols-4">
-          <Stat label="Drafts" value={drafts.length} />
-          <Stat label="Pending review" value={pending.length} />
-          <Stat label="Authorised (7d)" value={authorised.length} />
-          <Stat label="QC strains" value={qcStrains.length} />
+          <Stat label="Drafts" value={drafts.length} icon={FileCheck2} accent="warning" />
+          <Stat label="Pending review" value={pending.length} icon={Activity} accent="primary" />
+          <Stat label="Authorised (7d)" value={authorised.length} icon={ScrollText} accent="success" />
+          <Stat label="QC strains" value={qcStrains.length} icon={FlaskConical} accent="muted" />
         </div>
 
         {role === "Admin" && (
@@ -110,12 +112,38 @@ function Index() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  label,
+  value,
+  icon: Icon,
+  accent = "primary",
+}: {
+  label: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+  accent?: "primary" | "warning" | "success" | "muted";
+}) {
+  const accentRing = {
+    primary: "ring-primary/20 text-primary",
+    warning: "ring-warning/30 text-warning",
+    success: "ring-success/30 text-success",
+    muted: "ring-border text-muted-foreground",
+  }[accent];
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="text-3xl font-semibold tracking-tight">{value}</div>
-        <div className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+    <Card className="relative overflow-hidden border-border/60 bg-card/60 backdrop-blur">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full opacity-40 blur-3xl"
+        style={{ background: "var(--gradient-glow)" }}
+      />
+      <CardContent className="relative pt-6">
+        <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-background/40 ring-1 ring-inset ${accentRing}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="font-serif text-4xl font-bold tracking-tight text-foreground">{value}</div>
+        <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          {label}
+        </div>
       </CardContent>
     </Card>
   );
