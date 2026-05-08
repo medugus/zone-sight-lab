@@ -84,13 +84,17 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary font-bold text-primary-foreground">
-            D
+        <div className="flex items-center gap-3 px-2 py-4">
+          <div className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-primary/30 bg-gradient-to-br from-primary/25 to-primary/5 shadow-[0_0_24px_-6px_var(--cyan-glow)]">
+            <div className="h-3 w-3 rounded-full bg-primary shadow-[0_0_12px_var(--cyan-glow)]" />
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold text-foreground">DiskDiff Reader</span>
-            <span className="text-[10px] text-muted-foreground">Clinical decision support</span>
+            <span className="font-serif text-base font-bold tracking-tight text-foreground">
+              DiskDiff
+            </span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-primary/80">
+              Reader · v1
+            </span>
           </div>
         </div>
       </SidebarHeader>
