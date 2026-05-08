@@ -20,6 +20,7 @@ import { Route as CaptureRouteImport } from './routes/capture'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EucastImportRouteImport } from './routes/eucast.import'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -76,6 +77,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EucastImportRoute = EucastImportRouteImport.update({
+  id: '/eucast/import',
+  path: '/eucast/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/qc-strains': typeof QcStrainsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/eucast/import': typeof EucastImportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/qc-strains': typeof QcStrainsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/eucast/import': typeof EucastImportRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/qc-strains': typeof QcStrainsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/eucast/import': typeof EucastImportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/qc-strains'
     | '/reports'
     | '/settings'
+    | '/eucast/import'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/qc-strains'
     | '/reports'
     | '/settings'
+    | '/eucast/import'
   id:
     | '__root__'
     | '/'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/qc-strains'
     | '/reports'
     | '/settings'
+    | '/eucast/import'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   QcStrainsRoute: typeof QcStrainsRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
+  EucastImportRoute: typeof EucastImportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/eucast/import': {
+      id: '/eucast/import'
+      path: '/eucast/import'
+      fullPath: '/eucast/import'
+      preLoaderRoute: typeof EucastImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -267,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   QcStrainsRoute: QcStrainsRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
+  EucastImportRoute: EucastImportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

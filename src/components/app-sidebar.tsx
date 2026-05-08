@@ -5,6 +5,7 @@ import {
   FlaskConical,
   LayoutDashboard,
   Microscope,
+  Upload,
   Ruler,
   ScrollText,
   Settings,
@@ -42,6 +43,7 @@ const workflow: NavItem[] = [
 const laboratory: NavItem[] = [
   { title: "QC Strains", url: "/qc-strains", icon: FlaskConical },
   { title: "Reports", url: "/reports", icon: FileText },
+  { title: "EUCAST Import", url: "/eucast/import", icon: Upload },
   { title: "Audit Trail", url: "/audit", icon: ScrollText },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
