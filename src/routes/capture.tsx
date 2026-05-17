@@ -7,73 +7,23 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Textarea } from "@/components/ui/textarea";
 import { Upload } from "lucide-react";
-import { createOrUpdatePlateRecord } from "@/lib/diskdiff-store";
-
+import { createOrUpdatePlateRecord, importLimsWorklistJson, listDiscLayout, saveDiscLayoutItem } from "@/lib/diskdiff-store";
 export const Route = createFileRoute("/capture")({ component: CapturePage });
-
 function CapturePage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [saved, setSaved] = useState<string>("");
-  const [form, setForm] = useState({
-    accessionNumber: "",
-    patientIdentifier: "",
-    specimenType: "",
-    organismName: "",
-    organismGroup: "",
-    plateSizeMm: "90",
-    mediumType: "",
-    incubationTemperature: "",
-    incubationAtmosphere: "",
-    incubationDurationHours: "",
-    inoculumStandard: "",
-    imageUrl: "",
-    captureDevice: "",
-  });
-
-  return (
-    <div>
-      <PageHeader title="Plate Capture" description="Create a draft plate record and attach image metadata." />
-      <div className="p-6 grid gap-4">
-        <Alert><AlertDescription>Image-assisted disk diffusion reading is for supervised laboratory use. Final AST interpretation requires authorised review.</AlertDescription></Alert>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Plate image metadata</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <label className="flex h-36 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed bg-muted/40 hover:bg-muted">
-                <Upload className="h-6 w-6 text-muted-foreground" />
-                <span className="mt-2 text-sm text-muted-foreground">{file ? file.name : "Click to select plate image"}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-              </label>
-              <Field label="Image URL placeholder"><Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} /></Field>
-              <Field label="Capture device"><Input value={form.captureDevice} onChange={(e) => setForm({ ...form, captureDevice: e.target.value })} placeholder="Phone camera" /></Field>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Plate record</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {(["accessionNumber","patientIdentifier","specimenType","organismName","organismGroup","mediumType","incubationTemperature","incubationAtmosphere","incubationDurationHours","inoculumStandard"] as const).map((k) => (
-                <Field key={k} label={k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase())}><Input value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></Field>
-              ))}
-              <Field label="Plate size">
-                <Select value={form.plateSizeMm} onValueChange={(v) => setForm({ ...form, plateSizeMm: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="90">90 mm</SelectItem><SelectItem value="150">150 mm</SelectItem></SelectContent>
-                </Select>
-              </Field>
-              <Button onClick={() => {
-                const plate = createOrUpdatePlateRecord({ ...form, plateSizeMm: Number(form.plateSizeMm) as 90 | 150 });
-                setSaved(`Saved draft plate ${plate.id}`);
-              }}>Save draft plate record</Button>
-              {saved && <p className="text-xs text-muted-foreground">{saved}</p>}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
+  const [file, setFile] = useState<File | null>(null); const [saved, setSaved] = useState(""); const [importText, setImportText] = useState(""); const [importMsg, setImportMsg] = useState(""); const [tick, setTick] = useState(0);
+  const [form, setForm] = useState<any>({ accessionNumber:"", patientIdentifier:"", specimenType:"", organismName:"", organismGroup:"", plateSizeMm:"90", mediumType:"", incubationTemperature:"", incubationAtmosphere:"", incubationDurationHours:"", inoculumStandard:"", imageUrl:"", captureDevice:"", operatingMode:"standalone", interpretationAuthority:"measurement_only", worklistId:"", isolateId:"", externalLisAccessionId:"", externalLisIsolateId:"", organismCode:"", astPanelId:"", astPanelName:"", standard:"EUCAST", plateBarcode:"", imageQualityStatus:"acceptable", mediumLot:"", createdBy:"" });
+  const layout = listDiscLayout();
+  return <div><PageHeader title="Plate Capture" description="Create a draft plate record and attach image metadata." /><div className="p-6 grid gap-4"><Alert><AlertDescription>Draft: not for clinical release. Image-assisted disk diffusion reading is for supervised laboratory use. Final AST interpretation requires authorised review.</AlertDescription></Alert>
+  <Alert><AlertDescription>In LIS-connected mode, DiskDiff Reader sends zone measurements and audit metadata. Final interpretation, expert rules, AMS governance, validation, and report release remain in the LIS unless explicitly configured otherwise.</AlertDescription></Alert>
+  <Card><CardHeader><CardTitle className="text-base">Import LIMS Worklist JSON</CardTitle></CardHeader><CardContent className="space-y-2"><Textarea value={importText} onChange={(e)=>setImportText(e.target.value)} rows={6} placeholder="Paste worklist JSON" /><Button onClick={()=>{try{const plate=importLimsWorklistJson(importText);setForm({...form,...plate,plateSizeMm:String(plate.plateSizeMm)});setImportMsg("Import successful");setTick(tick+1);}catch(e:any){setImportMsg(`Import failed: ${e.message}`);}}}>Import LIMS Worklist JSON</Button>{importMsg&&<p className="text-xs">{importMsg}</p>}</CardContent></Card>
+<div className="grid gap-6 lg:grid-cols-2"><Card><CardHeader><CardTitle className="text-base">Plate image metadata</CardTitle></CardHeader><CardContent className="space-y-4"><label className="flex h-36 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed bg-muted/40 hover:bg-muted"><Upload className="h-6 w-6 text-muted-foreground" /><span className="mt-2 text-sm text-muted-foreground">{file ? file.name : "Click to select plate image"}</span><input type="file" accept="image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label><Field label="Image URL placeholder"><Input value={form.imageUrl} onChange={(e)=>setForm({...form,imageUrl:e.target.value})}/></Field><Field label="Capture device"><Input value={form.captureDevice} onChange={(e)=>setForm({...form,captureDevice:e.target.value})}/></Field></CardContent></Card>
+<Card><CardHeader><CardTitle className="text-base">Plate record</CardTitle></CardHeader><CardContent className="space-y-3">{["accessionNumber","patientIdentifier","specimenType","organismName","organismGroup","mediumType","incubationTemperature","incubationAtmosphere","incubationDurationHours","inoculumStandard","worklistId","isolateId","externalLisAccessionId","externalLisIsolateId","organismCode","astPanelId","astPanelName","plateBarcode","mediumLot","createdBy"].map((k)=><Field key={k} label={k}><Input value={form[k]} onChange={(e)=>setForm({...form,[k]:e.target.value})}/></Field>)}
+<Field label="Plate size"><Select value={form.plateSizeMm} onValueChange={(v)=>setForm({...form,plateSizeMm:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="90">90 mm</SelectItem><SelectItem value="150">150 mm</SelectItem></SelectContent></Select></Field>
+{(["operatingMode","interpretationAuthority","standard","imageQualityStatus"] as const).map((k)=><Field key={k} label={k}><Input value={form[k]} onChange={(e)=>setForm({...form,[k]:e.target.value})}/></Field>)}
+<Button onClick={()=>{const plate=createOrUpdatePlateRecord({...form,plateSizeMm:Number(form.plateSizeMm)});setSaved(`Saved draft plate ${plate.id}`)}}>Save draft plate record</Button>{saved&&<p className="text-xs">{saved}</p>}</CardContent></Card></div>
+<Card key={tick}><CardHeader><CardTitle className="text-base">Disc layout</CardTitle></CardHeader><CardContent className="space-y-2">{layout.map((d)=><div key={d.id} className="grid md:grid-cols-8 gap-2"><Input value={d.diskPosition} onChange={(e)=>saveDiscLayoutItem({...d,diskPosition:e.target.value})}/><Input value={d.antibioticCode} onChange={(e)=>saveDiscLayoutItem({...d,antibioticCode:e.target.value})}/><Input value={d.antibioticName} onChange={(e)=>saveDiscLayoutItem({...d,antibioticName:e.target.value})}/><Input value={d.discPotency} onChange={(e)=>saveDiscLayoutItem({...d,discPotency:e.target.value})}/><Input value={d.discLot} onChange={(e)=>saveDiscLayoutItem({...d,discLot:e.target.value})}/><Input value={d.discExpiryDate} onChange={(e)=>saveDiscLayoutItem({...d,discExpiryDate:e.target.value})}/><Input value={String(d.expectedOnPlate)} onChange={(e)=>saveDiscLayoutItem({...d,expectedOnPlate:e.target.value==='true'})}/></div>)}<Button onClick={()=>{saveDiscLayoutItem({diskPosition:"",antibioticCode:"",antibioticName:"",discPotency:"",discLot:"",discExpiryDate:"",expectedOnPlate:true});setTick(tick+1);}}>Add disc layout item</Button></CardContent></Card>
+</div></div>;
 }
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="space-y-1.5"><Label className="text-xs">{label}</Label>{children}</div>;
-}
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-1.5"><Label className="text-xs">{label}</Label>{children}</div>; }
