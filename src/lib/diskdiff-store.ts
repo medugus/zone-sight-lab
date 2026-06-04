@@ -1,3 +1,6 @@
+import { LimsWorklistSchema } from "./schemas/lims-worklist.schema";
+import { ZoneResultEnvelopeSchema, type ZoneResultEnvelope } from "./schemas/zone-result.schema";
+
 export type PlateStatus = "Draft" | "QC Complete";
 export type QcStatus =
   | "Acceptable for automated reading"
@@ -252,43 +255,42 @@ export function listDiscLayout() {
 }
 
 export function importLimsWorklistJson(jsonText: string) {
-  const payload = JSON.parse(jsonText) as Record<string, unknown>;
+  const raw = JSON.parse(jsonText) as unknown;
+  const payload = LimsWorklistSchema.parse(raw);
   const store = getStore();
   const importedPlate = hydratePlateRecord({
     ...store.currentPlate,
     id: store.currentPlate?.id,
     createdAt: store.currentPlate?.createdAt,
     plateStatus: store.currentPlate?.plateStatus ?? "Draft",
-    externalLisAccessionId: String(payload.accessionId ?? ""),
-    accessionNumber: String(payload.accessionNumber ?? ""),
-    patientIdentifier: String(payload.patientDisplayId ?? payload.patientIdentifier ?? ""),
-    isolateId: String(payload.isolateId ?? ""),
-    externalLisIsolateId: String(payload.isolateId ?? ""),
-    specimenType: String(payload.specimenType ?? store.currentPlate?.specimenType ?? ""),
-    organismName: String(payload.organismName ?? ""),
-    organismCode: String(payload.organismCode ?? ""),
-    organismGroup: String(payload.organismGroup ?? ""),
-    astPanelId: String(payload.astPanelId ?? ""),
-    astPanelName: String(payload.astPanelName ?? payload.astPanelLabel ?? ""),
-    standard: (payload.standard as AstStandard) ?? "EUCAST",
-    worklistId: String(payload.accessionId ?? ""),
+    externalLisAccessionId: payload.accessionId,
+    accessionNumber: payload.accessionNumber,
+    patientIdentifier: payload.patientDisplayId,
+    isolateId: payload.isolateId,
+    externalLisIsolateId: payload.isolateId,
+    specimenType: payload.specimenType,
+    organismName: payload.organismName,
+    organismCode: payload.organismCode,
+    organismGroup: payload.organismGroup,
+    astPanelId: payload.astPanelId,
+    astPanelName: payload.astPanelName,
+    standard: payload.standard,
+    worklistId: payload.worklistId,
     operatingMode: "medugu_lims_connected",
     interpretationAuthority: "lis_interprets",
   });
 
-  const discs = Array.isArray(payload.expectedDiscs) ? payload.expectedDiscs : [];
-  const discLayout = discs.map((disc, index) => {
-    const record = disc as Record<string, unknown>;
-    return hydrateDiscLayout({
+  const discLayout = payload.expectedDiscs.map((disc, index) =>
+    hydrateDiscLayout({
       diskPosition: `A${index + 1}`,
-      antibioticCode: String(record.antibioticCode ?? ""),
-      antibioticName: String(record.antibioticName ?? record.plateHint ?? ""),
-      discPotency: String(record.discPotency ?? ""),
+      antibioticCode: disc.antibioticCode,
+      antibioticName: disc.antibioticName,
+      discPotency: disc.discPotency,
       discLot: "",
       discExpiryDate: "",
       expectedOnPlate: true,
-    });
-  });
+    }),
+  );
 
   store.currentPlate = importedPlate;
   store.discLayout = discLayout;
@@ -322,9 +324,24 @@ export function exportZoneResultJson() {
   const { currentPlate, measurements } = getStore();
   if (!currentPlate) throw new Error("No current plate to export");
 
-  return {
+  const audit = measurements
+    .filter((m) => m.manualEdited)
+    .map((m) => ({
+      antibioticCode: m.antibioticCode,
+      originalValue: m.originalValue,
+      correctedValue: m.correctedValue,
+      overrideReason: m.overrideReason,
+      reviewedBy: m.reviewedBy,
+      reviewedAt: m.reviewedAt,
+    }));
+
+  const envelope = {
+    schemaVersion: "1.0.0" as const,
     contractVersion: "1.0.0",
-    sourceSystem: "DISKDIFF_READER",
+    sourceSystem: "DISKDIFF_READER" as const,
+    notForClinicalRelease: true as const,
+    releaseAuthority:
+      currentPlate.operatingMode === "standalone" ? ("LOCAL" as const) : ("LIS" as const),
     readerDeviceId: currentPlate.captureDevice,
     readerSoftwareVersion: "DiskDiff Reader v1",
     operator: currentPlate.createdBy,
@@ -333,7 +350,7 @@ export function exportZoneResultJson() {
     accessionNumber: currentPlate.accessionNumber,
     isolateId: currentPlate.isolateId,
     astPanelId: currentPlate.astPanelId,
-    method: "disk_diffusion",
+    method: "disk_diffusion" as const,
     standard: currentPlate.standard,
     plateBarcode: currentPlate.plateBarcode,
     imageReference: currentPlate.imageUrl,
@@ -354,7 +371,11 @@ export function exportZoneResultJson() {
       reviewedAt: m.reviewedAt || null,
       comment: m.comment,
     })),
+    audit,
   };
+
+  // Validate against frozen schema before returning — fail loudly on contract drift
+  return ZoneResultEnvelopeSchema.parse(envelope) satisfies ZoneResultEnvelope;
 }
 
 export function generateDraftReportText() {

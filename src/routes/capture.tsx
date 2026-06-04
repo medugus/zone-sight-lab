@@ -97,7 +97,7 @@ function CapturePage() {
               <Field label="captureDevice"><Input value={form.captureDevice} onChange={(e) => setForm({ ...form, captureDevice: e.target.value })} /></Field>
               <Field label="plateBarcode"><Input value={form.plateBarcode} onChange={(e) => setForm({ ...form, plateBarcode: e.target.value })} /></Field>
               <Field label="imageQualityStatus">
-                <Select value={form.imageQualityStatus} onValueChange={(v) => setForm({ ...form, imageQualityStatus: v })}>
+                <Select value={form.imageQualityStatus} onValueChange={(v) => setForm({ ...form, imageQualityStatus: v as typeof form.imageQualityStatus })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="acceptable">acceptable</SelectItem><SelectItem value="needs_review">needs_review</SelectItem><SelectItem value="rejected">rejected</SelectItem></SelectContent>
                 </Select>

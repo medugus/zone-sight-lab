@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourceSystem": "MEDUGU_LIMS",
+  "worklistId": "WL-2026-0001",
+  "accessionId": "ACC-2026-000123",
+  "accessionNumber": "A123456",
+  "patientDisplayId": "PT-789",
+  "isolateId": "ISO-2026-000123-1",
+  "specimenType": "Urine",
+  "organismName": "Escherichia coli",
+  "organismCode": "ECO",
+  "organismGroup": "Enterobacterales",
+  "astPanelId": "PANEL-EUCAST-URINE-ECO",
+  "astPanelName": "EUCAST Urine — Enterobacterales",
+  "standard": "EUCAST",
+  "createdAt": "2026-06-04T09:30:00.000Z",
+  "expectedDiscs": [
+    { "antibioticCode": "AMP", "antibioticName": "Ampicillin", "discPotency": "10 ug" },
+    { "antibioticCode": "CIP", "antibioticName": "Ciprofloxacin", "discPotency": "5 ug" },
+    { "antibioticCode": "GEN", "antibioticName": "Gentamicin", "discPotency": "10 ug" },
+    { "antibioticCode": "TMP-SMX", "antibioticName": "Trimethoprim-sulfamethoxazole", "discPotency": "1.25/23.75 ug" }
+  ]
+}
