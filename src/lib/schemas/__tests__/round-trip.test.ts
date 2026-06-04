@@ -24,7 +24,12 @@ class MemoryStorage {
 
 beforeEach(() => {
   (globalThis as unknown as { localStorage: Storage }).localStorage = new MemoryStorage() as unknown as Storage;
-  (globalThis as unknown as { crypto: Crypto }).crypto = (globalThis.crypto ?? ({ randomUUID: () => Math.random().toString(36).slice(2) } as Crypto));
+  if (!globalThis.crypto || typeof globalThis.crypto.randomUUID !== "function") {
+    Object.defineProperty(globalThis, "crypto", {
+      value: { randomUUID: () => Math.random().toString(36).slice(2) },
+      configurable: true,
+    });
+  }
 });
 
 describe("LIMS worklist + Zone result round-trip", () => {
