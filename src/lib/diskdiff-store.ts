@@ -1,3 +1,6 @@
+import { LimsWorklistSchema } from "./schemas/lims-worklist.schema";
+import { ZoneResultEnvelopeSchema, type ZoneResultEnvelope } from "./schemas/zone-result.schema";
+
 export type PlateStatus = "Draft" | "QC Complete";
 export type QcStatus =
   | "Acceptable for automated reading"
