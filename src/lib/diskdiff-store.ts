@@ -255,9 +255,7 @@ export function listDiscLayout() {
 }
 
 export function importLimsWorklistJson(jsonText: string) {
-  const raw = JSON.parse(jsonText) as Record<string, unknown>;
-  // Lazy import to avoid circular pull at module-load
-  const { LimsWorklistSchema } = require("./schemas/lims-worklist.schema") as typeof import("./schemas/lims-worklist.schema");
+  const raw = JSON.parse(jsonText) as unknown;
   const payload = LimsWorklistSchema.parse(raw);
   const store = getStore();
   const importedPlate = hydratePlateRecord({
@@ -377,8 +375,7 @@ export function exportZoneResultJson() {
   };
 
   // Validate against frozen schema before returning — fail loudly on contract drift
-  const { ZoneResultEnvelopeSchema } = require("./schemas/zone-result.schema") as typeof import("./schemas/zone-result.schema");
-  return ZoneResultEnvelopeSchema.parse(envelope);
+  return ZoneResultEnvelopeSchema.parse(envelope) satisfies ZoneResultEnvelope;
 }
 
 export function generateDraftReportText() {
