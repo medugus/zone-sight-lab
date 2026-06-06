@@ -117,6 +117,18 @@ export type DiskMeasurement = {
 
 export type ImportedWorklistState = LimsWorklist & { importedAt: string };
 
+export class DuplicateMeasurementError extends Error {
+  constructor(
+    public readonly existingMeasurement: DiskMeasurement,
+    public readonly attemptedMeasurement: Omit<DiskMeasurement, "id">,
+  ) {
+    super(
+      `Measurement already exists for ${attemptedMeasurement.diskPosition} ${attemptedMeasurement.antibioticCode}.`,
+    );
+    this.name = "DuplicateMeasurementError";
+  }
+}
+
 export type StoreData = {
   currentPlate: PlateRecord | null;
   plateQc: PlateQc | null;
@@ -269,10 +281,119 @@ export function savePlateQc(qc: Omit<PlateQc, "qcStatus"> & { qcStatus: QcStatus
   return qc;
 }
 
-export function addDiskMeasurement(measurement: Omit<DiskMeasurement, "id">) {
+function normalizeMeasurementKey(value: string) {
+  return value.trim().toUpperCase();
+}
+
+function isSameMeasurementSlot(
+  measurement: Pick<DiskMeasurement, "diskPosition" | "antibioticCode">,
+  candidate: Pick<DiskMeasurement, "diskPosition" | "antibioticCode">,
+) {
+  return (
+    normalizeMeasurementKey(measurement.diskPosition) ===
+      normalizeMeasurementKey(candidate.diskPosition) &&
+    normalizeMeasurementKey(measurement.antibioticCode) ===
+      normalizeMeasurementKey(candidate.antibioticCode)
+  );
+}
+
+function findDuplicateMeasurementIndex(
+  measurements: DiskMeasurement[],
+  candidate: Pick<DiskMeasurement, "diskPosition" | "antibioticCode">,
+  excludeId?: string,
+) {
+  return measurements.findIndex(
+    (measurement) => measurement.id !== excludeId && isSameMeasurementSlot(measurement, candidate),
+  );
+}
+
+export function findDuplicateMeasurement(
+  candidate: Pick<DiskMeasurement, "diskPosition" | "antibioticCode">,
+  excludeId?: string,
+) {
+  const measurements = getStore().measurements;
+  const duplicateIndex = findDuplicateMeasurementIndex(measurements, candidate, excludeId);
+  return duplicateIndex >= 0 ? measurements[duplicateIndex] : null;
+}
+
+export function addDiskMeasurement(
+  measurement: Omit<DiskMeasurement, "id">,
+  options: { replaceExisting?: boolean } = {},
+) {
   const store = getStore();
+  const duplicateIndex = findDuplicateMeasurementIndex(store.measurements, measurement);
+  if (duplicateIndex >= 0 && !options.replaceExisting) {
+    throw new DuplicateMeasurementError(store.measurements[duplicateIndex], measurement);
+  }
+
   const hydrated = hydrateMeasurement({ id: crypto.randomUUID(), ...measurement });
-  store.measurements.push(hydrated);
+  if (duplicateIndex >= 0) store.measurements[duplicateIndex] = hydrated;
+  else store.measurements.push(hydrated);
+  saveStore(store);
+  return hydrated;
+}
+
+export function deleteDiskMeasurement(measurementId: string) {
+  const store = getStore();
+  const beforeCount = store.measurements.length;
+  store.measurements = store.measurements.filter((measurement) => measurement.id !== measurementId);
+  saveStore(store);
+  return store.measurements.length !== beforeCount;
+}
+
+export function updateDiskMeasurement(
+  measurementId: string,
+  patch: Partial<
+    Pick<
+      DiskMeasurement,
+      | "zoneDiameterMm"
+      | "comment"
+      | "readerConfidence"
+      | "reviewStatus"
+      | "overrideReason"
+      | "reviewedBy"
+      | "reviewedAt"
+    >
+  >,
+) {
+  const store = getStore();
+  const index = store.measurements.findIndex((measurement) => measurement.id === measurementId);
+  if (index < 0) return null;
+
+  const current = store.measurements[index];
+  const zoneChanged =
+    typeof patch.zoneDiameterMm === "number" && patch.zoneDiameterMm !== current.zoneDiameterMm;
+  const correctedAfterSave =
+    zoneChanged ||
+    (typeof patch.comment === "string" && patch.comment !== current.comment) ||
+    (patch.readerConfidence !== undefined && patch.readerConfidence !== current.readerConfidence) ||
+    (patch.reviewStatus !== undefined && patch.reviewStatus !== current.reviewStatus);
+
+  const hydrated = hydrateMeasurement({
+    ...current,
+    ...patch,
+    id: current.id,
+    manualEdited: current.manualEdited || correctedAfterSave,
+    originalValue: correctedAfterSave
+      ? (current.originalValue ?? current.zoneDiameterMm)
+      : current.originalValue,
+    correctedValue: correctedAfterSave
+      ? typeof patch.zoneDiameterMm === "number"
+        ? patch.zoneDiameterMm
+        : current.zoneDiameterMm
+      : current.correctedValue,
+    overrideReason: correctedAfterSave
+      ? (patch.overrideReason ?? current.overrideReason).trim() || "Manual measurement correction"
+      : (patch.overrideReason ?? current.overrideReason),
+    reviewedBy: correctedAfterSave
+      ? (patch.reviewedBy ?? current.reviewedBy).trim() || "manual reviewer"
+      : (patch.reviewedBy ?? current.reviewedBy),
+    reviewedAt: correctedAfterSave
+      ? (patch.reviewedAt ?? current.reviewedAt).trim() || new Date().toISOString()
+      : (patch.reviewedAt ?? current.reviewedAt),
+  });
+
+  store.measurements[index] = hydrated;
   saveStore(store);
   return hydrated;
 }

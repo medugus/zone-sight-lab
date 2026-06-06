@@ -23,8 +23,12 @@ import {
 } from "@/components/ui/table";
 import {
   addDiskMeasurement,
+  deleteDiskMeasurement,
+  DuplicateMeasurementError,
   getWorkflowState,
   saveDiscNotMeasuredReason,
+  updateDiskMeasurement,
+  type DiskMeasurement,
   type NotMeasuredReason,
 } from "@/lib/diskdiff-store";
 
@@ -33,6 +37,10 @@ export const Route = createFileRoute("/measure")({ component: MeasurePage });
 function MeasurePage() {
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
+  const [editingMeasurementId, setEditingMeasurementId] = useState<string | null>(null);
+  const [pendingDuplicate, setPendingDuplicate] = useState<Omit<DiskMeasurement, "id"> | null>(
+    null,
+  );
   const workflow = getWorkflowState();
   const plateSize = workflow.currentPlate?.plateSizeMm ?? 90;
   const blocked = workflow.plateQc?.qcStatus === "Reject image or repeat plate";
@@ -56,6 +64,128 @@ function MeasurePage() {
 
   const measurements = getWorkflowState().measurements;
   const measurementPlan = workflow.discLayout.filter((disc) => disc.expectedOnPlate);
+
+  const resetCorrectionForm = () => {
+    setEditingMeasurementId(null);
+    setPendingDuplicate(null);
+    setForm({
+      diskPosition: "",
+      antimicrobialName: "",
+      diskContent: "",
+      zoneDiameterMm: "",
+      comment: "",
+      antibioticCode: "",
+      readerConfidence: "manual",
+      measurementSource: "manual_entry",
+      reviewStatus: "accepted",
+      manualEdited: "false",
+      overrideReason: "",
+      originalValue: "",
+      correctedValue: "",
+      reviewedBy: "",
+      reviewedAt: "",
+    });
+  };
+
+  const buildMeasurementFromForm = (): Omit<DiskMeasurement, "id"> | null => {
+    const zone = Number(form.zoneDiameterMm);
+    if (Number.isNaN(zone)) {
+      setError("zone diameter must be numeric");
+      return null;
+    }
+    if (zone < 6) {
+      setError("zone diameter must be >=6 mm");
+      return null;
+    }
+    if (zone > plateSize) {
+      setError("zone diameter must be <= plate size");
+      return null;
+    }
+    const manualEdited = form.manualEdited === "true";
+    const originalValue = form.originalValue ? Number(form.originalValue) : null;
+    const correctedValue = form.correctedValue ? Number(form.correctedValue) : null;
+    if (manualEdited) {
+      if (originalValue === null || Number.isNaN(originalValue)) {
+        setError("manual edits require numeric originalValue");
+        return null;
+      }
+      if (correctedValue === null || Number.isNaN(correctedValue)) {
+        setError("manual edits require numeric correctedValue");
+        return null;
+      }
+      if (!form.overrideReason.trim()) {
+        setError("manual edits require overrideReason");
+        return null;
+      }
+      if (!form.reviewedBy.trim()) {
+        setError("manual edits require reviewedBy");
+        return null;
+      }
+      if (!form.reviewedAt.trim()) {
+        setError("manual edits require reviewedAt");
+        return null;
+      }
+    }
+
+    return {
+      diskPosition: form.diskPosition,
+      antimicrobialName: form.antimicrobialName,
+      diskContent: form.diskContent,
+      zoneDiameterMm: zone,
+      measurementMethod: "Manual ruler",
+      comment: form.comment,
+      antibioticCode: form.antibioticCode,
+      antibioticName: form.antimicrobialName,
+      discPotency: form.diskContent,
+      readerConfidence: form.readerConfidence as "high" | "medium" | "low" | "manual",
+      measurementSource: form.measurementSource as
+        | "auto_reader"
+        | "manual_entry"
+        | "reader_then_manual"
+        | "imported",
+      manualEdited,
+      originalValue,
+      correctedValue,
+      overrideReason: form.overrideReason,
+      reviewedBy: form.reviewedBy,
+      reviewedAt: form.reviewedAt,
+      reviewStatus: form.reviewStatus as "pending" | "accepted" | "rejected" | "needs_repeat",
+    };
+  };
+
+  const saveMeasurement = (replaceExisting = false) => {
+    const measurement = pendingDuplicate ?? buildMeasurementFromForm();
+    if (!measurement) return;
+
+    try {
+      setError("");
+      if (editingMeasurementId) {
+        updateDiskMeasurement(editingMeasurementId, {
+          zoneDiameterMm: measurement.zoneDiameterMm,
+          comment: measurement.comment,
+          readerConfidence: measurement.readerConfidence,
+          reviewStatus: measurement.reviewStatus,
+          overrideReason: measurement.overrideReason,
+          reviewedBy: measurement.reviewedBy,
+          reviewedAt: measurement.reviewedAt,
+        });
+        setEditingMeasurementId(null);
+      } else {
+        addDiskMeasurement(measurement, { replaceExisting });
+      }
+      setPendingDuplicate(null);
+      setRefresh((n) => n + 1);
+    } catch (caught) {
+      if (caught instanceof DuplicateMeasurementError) {
+        setPendingDuplicate(measurement);
+        setError(
+          `Measurement already exists for ${measurement.diskPosition} + ${measurement.antibioticCode}. Replace existing entry or cancel.`,
+        );
+        return;
+      }
+      throw caught;
+    }
+  };
 
   return (
     <div>
@@ -247,62 +377,28 @@ function MeasurePage() {
               </SelectContent>
             </Select>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button
-              disabled={blocked}
-              onClick={() => {
-                const zone = Number(form.zoneDiameterMm);
-                if (Number.isNaN(zone)) return setError("zone diameter must be numeric");
-                if (zone < 6) return setError("zone diameter must be >=6 mm");
-                if (zone > plateSize) return setError("zone diameter must be <= plate size");
-                const manualEdited = form.manualEdited === "true";
-                const originalValue = form.originalValue ? Number(form.originalValue) : null;
-                const correctedValue = form.correctedValue ? Number(form.correctedValue) : null;
-                if (manualEdited) {
-                  if (originalValue === null || Number.isNaN(originalValue)) {
-                    return setError("manual edits require numeric originalValue");
-                  }
-                  if (correctedValue === null || Number.isNaN(correctedValue)) {
-                    return setError("manual edits require numeric correctedValue");
-                  }
-                  if (!form.overrideReason.trim())
-                    return setError("manual edits require overrideReason");
-                  if (!form.reviewedBy.trim()) return setError("manual edits require reviewedBy");
-                  if (!form.reviewedAt.trim()) return setError("manual edits require reviewedAt");
-                }
-                setError("");
-                addDiskMeasurement({
-                  diskPosition: form.diskPosition,
-                  antimicrobialName: form.antimicrobialName,
-                  diskContent: form.diskContent,
-                  zoneDiameterMm: zone,
-                  measurementMethod: "Manual ruler",
-                  comment: form.comment,
-                  antibioticCode: form.antibioticCode,
-                  antibioticName: form.antimicrobialName,
-                  discPotency: form.diskContent,
-                  readerConfidence: form.readerConfidence as "high" | "medium" | "low" | "manual",
-                  measurementSource: form.measurementSource as
-                    | "auto_reader"
-                    | "manual_entry"
-                    | "reader_then_manual"
-                    | "imported",
-                  manualEdited,
-                  originalValue,
-                  correctedValue,
-                  overrideReason: form.overrideReason,
-                  reviewedBy: form.reviewedBy,
-                  reviewedAt: form.reviewedAt,
-                  reviewStatus: form.reviewStatus as
-                    | "pending"
-                    | "accepted"
-                    | "rejected"
-                    | "needs_repeat",
-                });
-                setRefresh((n) => n + 1);
-              }}
-            >
-              Add measurement
+            <Button disabled={blocked} onClick={() => saveMeasurement(false)}>
+              {editingMeasurementId ? "Save measurement edits" : "Add measurement"}
             </Button>
+            {editingMeasurementId && (
+              <Button variant="outline" onClick={resetCorrectionForm}>
+                Cancel edit
+              </Button>
+            )}
+            {pendingDuplicate && (
+              <div className="flex flex-wrap gap-2 rounded-md border border-amber-300 p-3 text-sm">
+                <span>
+                  Duplicate measurement detected for {pendingDuplicate.diskPosition} +{" "}
+                  {pendingDuplicate.antibioticCode}.
+                </span>
+                <Button size="sm" variant="destructive" onClick={() => saveMeasurement(true)}>
+                  Replace existing entry
+                </Button>
+                <Button size="sm" variant="outline" onClick={resetCorrectionForm}>
+                  Cancel duplicate
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -321,6 +417,7 @@ function MeasurePage() {
                   <TableHead>readerConfidence</TableHead>
                   <TableHead>measurementSource</TableHead>
                   <TableHead>reviewStatus</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -333,6 +430,47 @@ function MeasurePage() {
                     <TableCell>{m.readerConfidence}</TableCell>
                     <TableCell>{m.measurementSource}</TableCell>
                     <TableCell>{m.reviewStatus}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingMeasurementId(m.id);
+                            setPendingDuplicate(null);
+                            setForm({
+                              diskPosition: m.diskPosition,
+                              antimicrobialName: m.antimicrobialName || m.antibioticName,
+                              diskContent: m.diskContent || m.discPotency,
+                              zoneDiameterMm: String(m.zoneDiameterMm),
+                              comment: m.comment,
+                              antibioticCode: m.antibioticCode,
+                              readerConfidence: m.readerConfidence,
+                              measurementSource: m.measurementSource,
+                              reviewStatus: m.reviewStatus,
+                              manualEdited: "true",
+                              overrideReason: m.overrideReason,
+                              originalValue: String(m.originalValue ?? m.zoneDiameterMm),
+                              correctedValue: String(m.correctedValue ?? m.zoneDiameterMm),
+                              reviewedBy: m.reviewedBy,
+                              reviewedAt: m.reviewedAt || new Date().toISOString(),
+                            });
+                          }}
+                        >
+                          Edit measurement
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            deleteDiskMeasurement(m.id);
+                            setRefresh((n) => n + 1);
+                          }}
+                        >
+                          Delete measurement
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

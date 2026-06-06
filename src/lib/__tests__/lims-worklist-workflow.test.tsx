@@ -5,6 +5,8 @@ import { InterpretationAuthorityNotice } from "@/components/interpretation-autho
 import {
   addDiskMeasurement,
   createOrUpdatePlateRecord,
+  deleteDiskMeasurement,
+  DuplicateMeasurementError,
   exportZoneResultJson,
   getWorkflowState,
   importLimsWorklistJson,
@@ -12,6 +14,7 @@ import {
   saveDiscNotMeasuredReason,
   saveExportReviewer,
   savePlateQc,
+  updateDiskMeasurement,
   validateZoneResultExport,
 } from "@/lib/diskdiff-store";
 import worklistFixture from "../schemas/__fixtures__/worklist.sample.json";
@@ -179,6 +182,135 @@ function markRemainingDiscsNotMeasured(startIndex = 1) {
     .slice(startIndex)
     .forEach((disc) => saveDiscNotMeasuredReason(disc.id, "zone_unreadable", "No readable edge"));
 }
+
+describe("Measurement row correction and deletion", () => {
+  it("deletes one selected measurement row without removing the imported measurement plan", () => {
+    importLimsWorklistJson(JSON.stringify(worklistFixture));
+    addMeasurementForDisc(0);
+    addMeasurementForDisc(1);
+
+    const stateBeforeDelete = getWorkflowState();
+    const firstMeasurementId = stateBeforeDelete.measurements[0].id;
+    const secondMeasurement = stateBeforeDelete.measurements[1];
+    const planBeforeDelete = stateBeforeDelete.discLayout.map((disc) => ({ ...disc }));
+
+    expect(deleteDiskMeasurement(firstMeasurementId)).toBe(true);
+
+    const stateAfterDelete = getWorkflowState();
+    expect(stateAfterDelete.measurements).toHaveLength(1);
+    expect(stateAfterDelete.measurements[0]).toMatchObject({
+      id: secondMeasurement.id,
+      diskPosition: secondMeasurement.diskPosition,
+      antibioticCode: secondMeasurement.antibioticCode,
+    });
+    expect(stateAfterDelete.discLayout).toEqual(planBeforeDelete);
+  });
+
+  it("edits one selected measurement row and persists override audit fields", () => {
+    importLimsWorklistJson(JSON.stringify(worklistFixture));
+    addMeasurementForDisc(0);
+    addMeasurementForDisc(1);
+
+    const firstMeasurement = getWorkflowState().measurements[0];
+    const secondMeasurement = getWorkflowState().measurements[1];
+    const edited = updateDiskMeasurement(firstMeasurement.id, {
+      zoneDiameterMm: 21,
+      comment: "Corrected after review",
+      readerConfidence: "high",
+      reviewStatus: "accepted",
+      overrideReason: "Zone edge corrected from saved row",
+      reviewedBy: "dr.reviewer",
+      reviewedAt: "2026-06-06T12:00:00.000Z",
+    });
+
+    expect(edited).toMatchObject({
+      id: firstMeasurement.id,
+      zoneDiameterMm: 21,
+      comment: "Corrected after review",
+      readerConfidence: "high",
+      reviewStatus: "accepted",
+      manualEdited: true,
+      originalValue: 18,
+      correctedValue: 21,
+      overrideReason: "Zone edge corrected from saved row",
+      reviewedBy: "dr.reviewer",
+      reviewedAt: "2026-06-06T12:00:00.000Z",
+    });
+    expect(getWorkflowState().measurements).toHaveLength(2);
+    expect(getWorkflowState().measurements[1]).toMatchObject({ id: secondMeasurement.id });
+  });
+
+  it("blocks a duplicate measurement attempt for the same diskPosition and antibioticCode", () => {
+    importLimsWorklistJson(JSON.stringify(worklistFixture));
+    addMeasurementForDisc(0);
+    const disc = listDiscLayout()[0];
+
+    expect(() =>
+      addDiskMeasurement({
+        diskPosition: disc.diskPosition,
+        antimicrobialName: disc.antibioticName,
+        diskContent: disc.discPotency,
+        zoneDiameterMm: 24,
+        measurementMethod: "Manual ruler",
+        comment: "Duplicate attempt",
+        antibioticCode: disc.antibioticCode,
+        antibioticName: disc.antibioticName,
+        discPotency: disc.discPotency,
+        readerConfidence: "manual",
+        measurementSource: "manual_entry",
+        manualEdited: false,
+        originalValue: null,
+        correctedValue: null,
+        overrideReason: "",
+        reviewedBy: "",
+        reviewedAt: "",
+        reviewStatus: "accepted",
+      }),
+    ).toThrow(DuplicateMeasurementError);
+    expect(getWorkflowState().measurements).toHaveLength(1);
+    expect(getWorkflowState().measurements[0]).toMatchObject({ zoneDiameterMm: 18 });
+  });
+
+  it("replace-existing duplicate flow preserves only one final measurement row", () => {
+    importLimsWorklistJson(JSON.stringify(worklistFixture));
+    addMeasurementForDisc(0);
+    const disc = listDiscLayout()[0];
+
+    const replacement = addDiskMeasurement(
+      {
+        diskPosition: disc.diskPosition,
+        antimicrobialName: disc.antibioticName,
+        diskContent: disc.discPotency,
+        zoneDiameterMm: 24,
+        measurementMethod: "Manual ruler",
+        comment: "Replacement value",
+        antibioticCode: disc.antibioticCode,
+        antibioticName: disc.antibioticName,
+        discPotency: disc.discPotency,
+        readerConfidence: "high",
+        measurementSource: "manual_entry",
+        manualEdited: false,
+        originalValue: null,
+        correctedValue: null,
+        overrideReason: "",
+        reviewedBy: "",
+        reviewedAt: "",
+        reviewStatus: "accepted",
+      },
+      { replaceExisting: true },
+    );
+
+    const measurements = getWorkflowState().measurements;
+    expect(measurements).toHaveLength(1);
+    expect(measurements[0]).toMatchObject({
+      id: replacement.id,
+      diskPosition: disc.diskPosition,
+      antibioticCode: disc.antibioticCode,
+      zoneDiameterMm: 24,
+      comment: "Replacement value",
+    });
+  });
+});
 
 describe("Zone Result export readiness hardening", () => {
   it("blocks export when a required expected disc has neither measurement nor notMeasured reason", () => {
