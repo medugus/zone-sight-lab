@@ -146,6 +146,32 @@ describe("Medugu authenticated ZoneResult inbound boundary", () => {
     expect(row.lastRawMeasurementAuditId).toBe(targetStore.inboundAudit[0].id);
   });
 
+  it("rejects invalid JSON before schema validation while preserving the raw body", async () => {
+    const targetStore = store();
+    const rawBody = '{"schemaVersion":"1.0.0",';
+    const request = new Request("https://medugu.local/api/medugu/zone-results", {
+      method: "POST",
+      headers: { authorization: `Bearer ${TOKEN}` },
+      body: rawBody,
+    });
+
+    const response = await handleMeduguZoneResultInboundRequest(request, targetStore, {
+      intakeToken: TOKEN,
+      now: () => NOW,
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body).toMatchObject({ ok: false, reason: "invalid_json" });
+    expect(targetStore.inboundAudit).toHaveLength(1);
+    expect(targetStore.inboundAudit[0].rawPayload).toBe(rawBody);
+    expect(targetStore.inboundAudit[0].parseOutcome).toMatchObject({
+      status: "invalid_json",
+      issues: ["Request body is not valid JSON."],
+    });
+    expect(targetStore.accessions[0].astRows[0].rawValue).toBeUndefined();
+  });
+
   it("rejects invalid schema before accession mapping and stores the parse outcome", () => {
     const targetStore = store();
     const invalid = { ...payload(), schemaVersion: "2.0.0", unexpectedField: true };

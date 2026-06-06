@@ -44,7 +44,7 @@ For every received payload, the importer stores a `ZoneResultInboundAuditRecord`
 - validation outcome
 - accepted mapped row IDs or rejection reason/details
 
-Rejected uploads therefore remain auditable even when no AST row is changed.
+Rejected uploads therefore remain auditable even when no AST row is changed. Invalid JSON is rejected with `invalid_json` before schema validation while preserving the raw request body in the audit record.
 
 ## Exact inbound fields mapped
 
@@ -95,3 +95,4 @@ The refreshed tests cover:
 - idempotent re-import behaviour
 - proof that only raw measurement/provenance fields are directly changed
 - unauthenticated upload audit/rejection
+- invalid JSON audit/rejection with raw body preservation

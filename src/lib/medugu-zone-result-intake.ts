@@ -68,6 +68,7 @@ export type ZoneResultInboundAuditRecord = {
   parseOutcome:
     | { status: "not_parsed"; issues: string[] }
     | { status: "valid"; schemaVersion: string; resultCount: number }
+    | { status: "invalid_json"; issues: string[] }
     | { status: "invalid_schema"; issues: string[] };
   validationOutcome:
     | { status: "not_validated" }
@@ -178,15 +179,19 @@ export async function handleMeduguZoneResultInboundRequest(
 ) {
   if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
-  let payload: unknown;
+  const rawBody = await request.text();
+  let payload: unknown = null;
+  let invalidJsonIssue: string | undefined;
   try {
-    payload = await request.json();
+    payload = rawBody.trim() ? JSON.parse(rawBody) : null;
   } catch {
-    payload = null;
+    payload = rawBody;
+    invalidJsonIssue = "Request body is not valid JSON.";
   }
 
   const result = ingestZoneResultPayload(payload, store, {
     authenticated: authenticateZoneResultInboundRequest(request, options.intakeToken),
+    invalidJsonIssue,
     now: options.now,
   });
 
@@ -196,7 +201,7 @@ export async function handleMeduguZoneResultInboundRequest(
 export function ingestZoneResultPayload(
   payload: unknown,
   store: ZoneResultIntakeStore,
-  options: { authenticated: boolean; now?: () => string },
+  options: { authenticated: boolean; invalidJsonIssue?: string; now?: () => string },
 ): ZoneResultIntakeResult {
   const receivedAt = options.now?.() ?? nowIso();
   const audit: ZoneResultInboundAuditRecord = {
@@ -211,6 +216,11 @@ export function ingestZoneResultPayload(
 
   if (!options.authenticated) {
     return reject(audit, 401, "unauthenticated", ["Missing or invalid bearer token."]);
+  }
+
+  if (options.invalidJsonIssue) {
+    audit.parseOutcome = { status: "invalid_json", issues: [options.invalidJsonIssue] };
+    return reject(audit, 400, "invalid_json", audit.parseOutcome.issues);
   }
 
   const parsed = ZoneResultEnvelopeSchema.safeParse(payload);
