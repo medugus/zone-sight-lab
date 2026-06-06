@@ -9,21 +9,57 @@ import {
   listDiscLayout,
   createOrUpdatePlateRecord,
   getWorkflowState,
+  saveExportReviewer,
+  savePlateQc,
+  saveDiscNotMeasuredReason,
 } from "../../diskdiff-store";
 
 // jsdom-free localStorage shim
 class MemoryStorage {
   private data = new Map<string, string>();
-  getItem(k: string) { return this.data.get(k) ?? null; }
-  setItem(k: string, v: string) { this.data.set(k, String(v)); }
-  removeItem(k: string) { this.data.delete(k); }
-  clear() { this.data.clear(); }
-  key() { return null; }
-  get length() { return this.data.size; }
+  getItem(k: string) {
+    return this.data.get(k) ?? null;
+  }
+  setItem(k: string, v: string) {
+    this.data.set(k, String(v));
+  }
+  removeItem(k: string) {
+    this.data.delete(k);
+  }
+  clear() {
+    this.data.clear();
+  }
+  key() {
+    return null;
+  }
+  get length() {
+    return this.data.size;
+  }
+}
+
+function savePassingQc() {
+  savePlateQc({
+    entirePlateVisible: true,
+    imageNotBlurred: true,
+    lightingAcceptable: true,
+    noMajorReflection: true,
+    agarSurfaceIntact: true,
+    noExcessMoisture: true,
+    noObviousContamination: true,
+    lawnAcceptable: true,
+    disksVisible: true,
+    disksNotDisplaced: true,
+    zonesNotExcessivelyOverlapping: true,
+    correctMediumSelected: true,
+    incubationConditionEntered: true,
+    qcComment: "",
+    qcStatus: "Acceptable for automated reading",
+  });
 }
 
 beforeEach(() => {
-  (globalThis as unknown as { localStorage: Storage }).localStorage = new MemoryStorage() as unknown as Storage;
+  (globalThis as unknown as { localStorage: Storage }).localStorage =
+    new MemoryStorage() as unknown as Storage;
   if (!globalThis.crypto || typeof globalThis.crypto.randomUUID !== "function") {
     Object.defineProperty(globalThis, "crypto", {
       value: { randomUUID: () => Math.random().toString(36).slice(2) },
@@ -52,6 +88,8 @@ describe("LIMS worklist + Zone result round-trip", () => {
       createdBy: "tech.alice",
       plateBarcode: "PB-0001",
     });
+    savePassingQc();
+    saveExportReviewer("dr.reviewer");
 
     const layout = listDiscLayout();
     expect(layout.length).toBe(4);
@@ -97,7 +135,14 @@ describe("LIMS worklist + Zone result round-trip", () => {
   it("rejects exports with manual edits that lack an overrideReason via validateZoneResultExport flow", () => {
     importLimsWorklistJson(JSON.stringify(worklistFixture));
     const plate = getWorkflowState().currentPlate!;
-    createOrUpdatePlateRecord({ ...plate, captureDevice: "X", createdBy: "tech.alice", plateBarcode: "PB" });
+    createOrUpdatePlateRecord({
+      ...plate,
+      captureDevice: "X",
+      createdBy: "tech.alice",
+      plateBarcode: "PB",
+    });
+    savePassingQc();
+    saveExportReviewer("dr.reviewer");
 
     const d = listDiscLayout()[0];
     addDiskMeasurement({
@@ -120,6 +165,9 @@ describe("LIMS worklist + Zone result round-trip", () => {
       reviewedAt: new Date().toISOString(),
       reviewStatus: "accepted",
     });
+    listDiscLayout()
+      .slice(1)
+      .forEach((disc) => saveDiscNotMeasuredReason(disc.id, "zone_unreadable", "No readable edge"));
 
     const exported = exportZoneResultJson();
     expect(exported.audit.length).toBe(1);
