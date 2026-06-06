@@ -18,7 +18,7 @@ export const ZoneMeasurementSchema = z.object({
   reviewedBy: z.string().nullable(),
   reviewedAt: z.string().nullable(),
   comment: z.string().optional().default(""),
-});
+}).strict();
 
 export const ZoneResultEnvelopeSchema = z.object({
   schemaVersion: z.literal(ZONE_RESULT_SCHEMA_VERSION),
@@ -48,10 +48,10 @@ export const ZoneResultEnvelopeSchema = z.object({
         overrideReason: z.string(),
         reviewedBy: z.string(),
         reviewedAt: z.string(),
-      }),
+      }).strict(),
     )
     .default([]),
-});
+}).strict();
 
 export type ZoneResultEnvelope = z.infer<typeof ZoneResultEnvelopeSchema>;
 
