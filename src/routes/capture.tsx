@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload } from "lucide-react";
-import { createOrUpdatePlateRecord, getWorkflowState, importLimsWorklistJson, saveDiscLayoutItem } from "@/lib/diskdiff-store";
+import { createOrUpdatePlateRecord, getWorkflowState, importLimsWorklistJson, LimsImportError, saveDiscLayoutItem } from "@/lib/diskdiff-store";
+import type { FormattedLimsImportError } from "@/lib/schemas/format-lims-import-error";
 
 export const Route = createFileRoute("/capture")({ component: CapturePage });
 
@@ -19,6 +20,7 @@ function CapturePage() {
   const [saved, setSaved] = useState("");
   const [importMsg, setImportMsg] = useState("");
   const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState<FormattedLimsImportError | null>(null);
   const [tick, setTick] = useState(0);
   const [form, setForm] = useState({
     accessionNumber: workflow.currentPlate?.accessionNumber ?? "",
@@ -75,12 +77,20 @@ function CapturePage() {
               try {
                 const plate = importLimsWorklistJson(importText);
                 setImportMsg(`Imported worklist for accession ${plate.accessionNumber || "N/A"}`);
+                setImportError(null);
                 setTick((n) => n + 1);
               } catch (error) {
-                setImportMsg(`Import failed: ${(error as Error).message}`);
+                if (error instanceof LimsImportError) {
+                  setImportError(error.formatted);
+                  setImportMsg("");
+                } else {
+                  setImportError(null);
+                  setImportMsg(`Import failed: ${(error as Error).message}`);
+                }
               }
             }}>Import LIMS Worklist JSON</Button>
             {importMsg && <p className="text-xs text-muted-foreground">{importMsg}</p>}
+            {importError && <ImportErrorSummary error={importError} />}
           </CardContent>
         </Card>
 
@@ -153,4 +163,45 @@ function CapturePage() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <div className="space-y-1.5"><Label className="text-xs">{label}</Label>{children}</div>;
+}
+
+function ImportErrorSummary({ error }: { error: FormattedLimsImportError }) {
+  const sections: Array<{ key: keyof FormattedLimsImportError["groups"]; title: string }> = [
+    { key: "schemaVersion", title: "Wrong schema version" },
+    { key: "wrapper", title: "Wrong wrapper shape" },
+    { key: "missing", title: "Missing required fields" },
+    { key: "wrongType", title: "Wrong nullability or type" },
+    { key: "unknownFields", title: "Wrong field names / unrecognised fields" },
+  ];
+  return (
+    <div
+      role="alert"
+      aria-label="LIMS Worklist import validation summary"
+      data-testid="lims-import-error-summary"
+      className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm"
+    >
+      <p className="font-medium text-destructive">{error.summary}</p>
+      <div className="mt-2 space-y-2">
+        {sections.map(({ key, title }) => {
+          const items = error.groups[key];
+          if (items.length === 0) return null;
+          return (
+            <div key={key} data-testid={`lims-import-error-group-${key}`}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-destructive/90">
+                {title} ({items.length})
+              </p>
+              <ul className="ml-4 list-disc text-xs text-foreground/80">
+                {items.map((msg) => (
+                  <li key={msg}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+        Schema is strict. Fix the payload upstream — the importer will not coerce fields.
+      </p>
+    </div>
+  );
 }
