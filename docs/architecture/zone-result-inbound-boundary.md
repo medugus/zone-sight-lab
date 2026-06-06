@@ -60,10 +60,11 @@ Every received payload creates a `ZoneResultInboundAuditRecord` before clinical 
 - `id`
 - `receivedAt`
 - `authenticated`
-- `rawPayload`
+- `rawPayload` (parsed JSON for valid JSON bodies, or the raw request body string when JSON parsing fails)
 - `parseOutcome`
   - `not_parsed`
   - `valid`
+  - `invalid_json`
   - `invalid_schema`
 - `validationOutcome`
   - `not_validated`
