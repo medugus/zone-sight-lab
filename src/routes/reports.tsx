@@ -15,19 +15,32 @@ import {
   saveExportReviewer,
   validateZoneResultExport,
 } from "@/lib/diskdiff-store";
+import {
+  sendCurrentZoneResultToLis,
+  type ZoneResultSendState,
+} from "@/lib/zone-result-send-to-lis";
 
 export const Route = createFileRoute("/reports")({ component: ReportsPage });
 
-function ReportsPage() {
+export function ReportsPage() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [jsonOutput, setJsonOutput] = useState("");
   const [reviewer, setReviewer] = useState(() => getWorkflowState().exportReviewer);
   const [readinessRefresh, setReadinessRefresh] = useState(0);
+  const [lisEndpoint, setLisEndpoint] = useState("/api/medugu/zone-results");
+  const [lisToken, setLisToken] = useState("");
+  const [sendState, setSendState] = useState<ZoneResultSendState>("ready");
+  const [sendMessage, setSendMessage] = useState(
+    "Ready to send validated Zone Result payload to LIS.",
+  );
   const readiness = getExportReadinessChecklist();
 
   return (
     <div>
-      <PageHeader title="Reports" description="Draft report and Zone Result JSON export." />
+      <PageHeader
+        title="Reports"
+        description="Draft report, Send to LIS, and Zone Result JSON export."
+      />
       <div className="grid gap-4 p-6">
         <ExportReadinessChecklist items={readiness} />
         <Card>
@@ -55,6 +68,62 @@ function ReportsPage() {
                 }}
               />
             </div>
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle className="text-base">Send to LIS</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Badge variant={sendState === "failed" ? "destructive" : "outline"}>
+                  {sendState === "ready" && "Ready to send"}
+                  {sendState === "sending" && "Sending"}
+                  {sendState === "sent" && "Sent successfully"}
+                  {sendState === "failed" && "Failed"}
+                </Badge>
+                <p className="text-sm text-muted-foreground">{sendMessage}</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium" htmlFor="lis-endpoint">
+                      Medugu inbound endpoint
+                    </label>
+                    <Input
+                      id="lis-endpoint"
+                      value={lisEndpoint}
+                      onChange={(event) => setLisEndpoint(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium" htmlFor="lis-token">
+                      Bearer token
+                    </label>
+                    <Input
+                      id="lis-token"
+                      type="password"
+                      value={lisToken}
+                      placeholder="Medugu ZoneResult token"
+                      onChange={(event) => setLisToken(event.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button
+                  disabled={sendState === "sending"}
+                  onClick={async () => {
+                    void readinessRefresh;
+                    setWarnings([]);
+                    setSendState("sending");
+                    setSendMessage("Sending validated Zone Result payload to Medugu...");
+                    const result = await sendCurrentZoneResultToLis({
+                      endpoint: lisEndpoint,
+                      bearerToken: lisToken,
+                    });
+                    setSendState(result.state);
+                    setSendMessage(result.message);
+                    if (result.state === "failed") setWarnings([result.message]);
+                  }}
+                >
+                  Send to LIS
+                </Button>
+              </CardContent>
+            </Card>
             <Button
               onClick={() => {
                 void readinessRefresh;
