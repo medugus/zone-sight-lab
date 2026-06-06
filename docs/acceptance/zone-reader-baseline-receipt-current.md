@@ -103,10 +103,9 @@ Hardcoded envelope fields:
 - `notForClinicalRelease: true`: confirmed (literal in schema and envelope).
 - `releaseAuthority` remains `"LIS"` for LIMS-connected plates (`"LOCAL"` for
   standalone — existing behaviour, not new).
-- No live HTTP/API/webhook/device integration: confirmed.
-  - No files under `src/routes/api/**`.
-  - No `createServerFn`, no `fetch(`, no websocket, no device driver code.
-  - All persistence is `localStorage`.
+- Live outbound integration status: superseded by the minimal manual `Send to LIS` action documented in `docs/acceptance/zone-reader-live-send-current.md`.
+  - Still no bidirectional sync, polling, sockets, webhook verification, retry daemon, device driver code, or LIS-side interpretation UI.
+  - Local Zone Reader workflow persistence remains `localStorage`.
 
 ## F. Typecheck/test/build status
 
