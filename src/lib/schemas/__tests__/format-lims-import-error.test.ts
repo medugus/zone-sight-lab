@@ -45,9 +45,10 @@ describe("formatLimsImportError", () => {
     // Wrong wrapper shape detected from raw introspection
     expect(groups.wrapper.join("\n")).toMatch(/wrapped in a "worklist"/);
 
-    // Missing required fields surfaced individually
+    // schemaVersion mismatch (missing literal) is its own category
+    expect(groups.schemaVersion.join("\n")).toMatch(/schemaVersion/);
+    // Other required fields appear under missing
     const missing = groups.missing.join("\n");
-    expect(missing).toMatch(/schemaVersion/);
     expect(missing).toMatch(/expectedDiscs/);
     expect(missing).toMatch(/createdAt/);
   });
