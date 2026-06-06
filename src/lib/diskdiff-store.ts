@@ -1,4 +1,4 @@
-import { LimsWorklistSchema } from "./schemas/lims-worklist.schema";
+import { LimsWorklistSchema, type LimsWorklist } from "./schemas/lims-worklist.schema";
 import { ZoneResultEnvelopeSchema, type ZoneResultEnvelope } from "./schemas/zone-result.schema";
 import {
   formatLimsImportError,
@@ -12,12 +12,22 @@ export type QcStatus =
   | "Reject image or repeat plate";
 
 export type OperatingMode = "standalone" | "medugu_lims_connected" | "third_party_lis_connected";
-export type InterpretationAuthority = "measurement_only" | "zone_reader_interprets" | "lis_interprets";
+export type InterpretationAuthority =
+  | "measurement_only"
+  | "zone_reader_interprets"
+  | "lis_interprets";
 export type AstStandard = "EUCAST" | "CLSI" | "LOCAL";
 export type ImageQualityStatus = "acceptable" | "needs_review" | "rejected";
 export type ReaderConfidence = "high" | "medium" | "low" | "manual";
 export type MeasurementSource = "auto_reader" | "manual_entry" | "reader_then_manual" | "imported";
 export type ReviewStatus = "pending" | "accepted" | "rejected" | "needs_repeat";
+export type NotMeasuredReason =
+  | ""
+  | "disc_missing"
+  | "disc_damaged"
+  | "zone_unreadable"
+  | "contamination_or_mixed_growth"
+  | "other";
 
 export type PlateRecord = {
   id: string;
@@ -61,6 +71,8 @@ export type DiscLayout = {
   discLot: string;
   discExpiryDate: string;
   expectedOnPlate: boolean;
+  notMeasuredReason: NotMeasuredReason;
+  notMeasuredComment: string;
 };
 
 export type PlateQc = {
@@ -103,16 +115,27 @@ export type DiskMeasurement = {
   reviewStatus: ReviewStatus;
 };
 
+export type ImportedWorklistState = LimsWorklist & { importedAt: string };
+
 export type StoreData = {
   currentPlate: PlateRecord | null;
   plateQc: PlateQc | null;
   measurements: DiskMeasurement[];
   discLayout: DiscLayout[];
+  importedWorklist: ImportedWorklistState | null;
+  exportReviewer: string;
 };
 
 const STORAGE_KEY = "diskdiff_workflow_store_v1";
 
-const defaultStore: StoreData = { currentPlate: null, plateQc: null, measurements: [], discLayout: [] };
+const defaultStore: StoreData = {
+  currentPlate: null,
+  plateQc: null,
+  measurements: [],
+  discLayout: [],
+  importedWorklist: null,
+  exportReviewer: "",
+};
 
 function getStore(): StoreData {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -122,8 +145,14 @@ function getStore(): StoreData {
     return {
       currentPlate: parsed.currentPlate ? hydratePlateRecord(parsed.currentPlate) : null,
       plateQc: parsed.plateQc ?? null,
-      measurements: Array.isArray(parsed.measurements) ? parsed.measurements.map(hydrateMeasurement) : [],
+      measurements: Array.isArray(parsed.measurements)
+        ? parsed.measurements.map(hydrateMeasurement)
+        : [],
       discLayout: Array.isArray(parsed.discLayout) ? parsed.discLayout.map(hydrateDiscLayout) : [],
+      importedWorklist: parsed.importedWorklist
+        ? hydrateImportedWorklist(parsed.importedWorklist)
+        : null,
+      exportReviewer: parsed.exportReviewer ?? "",
     };
   } catch {
     return { ...defaultStore };
@@ -193,6 +222,14 @@ function hydrateMeasurement(input: Partial<DiskMeasurement>): DiskMeasurement {
   };
 }
 
+function hydrateImportedWorklist(
+  input: Partial<ImportedWorklistState>,
+): ImportedWorklistState | null {
+  const result = LimsWorklistSchema.safeParse(input);
+  if (!result.success) return null;
+  return { ...result.data, importedAt: input.importedAt ?? new Date().toISOString() };
+}
+
 function hydrateDiscLayout(input: Partial<DiscLayout>): DiscLayout {
   return {
     id: input.id ?? crypto.randomUUID(),
@@ -203,10 +240,14 @@ function hydrateDiscLayout(input: Partial<DiscLayout>): DiscLayout {
     discLot: input.discLot ?? "",
     discExpiryDate: input.discExpiryDate ?? "",
     expectedOnPlate: input.expectedOnPlate ?? true,
+    notMeasuredReason: input.notMeasuredReason ?? "",
+    notMeasuredComment: input.notMeasuredComment ?? "",
   };
 }
 
-export function createOrUpdatePlateRecord(input: Omit<PlateRecord, "id" | "createdAt" | "plateStatus">) {
+export function createOrUpdatePlateRecord(
+  input: Omit<PlateRecord, "id" | "createdAt" | "plateStatus">,
+) {
   const store = getStore();
   const plate = hydratePlateRecord({
     ...store.currentPlate,
@@ -244,7 +285,10 @@ export function getWorkflowState() {
   return getStore();
 }
 
-export function saveDiscLayoutItem(item: Omit<DiscLayout, "id"> & { id?: string }) {
+export function saveDiscLayoutItem(
+  item: Omit<DiscLayout, "id" | "notMeasuredReason" | "notMeasuredComment"> &
+    Partial<Pick<DiscLayout, "notMeasuredReason" | "notMeasuredComment">> & { id?: string },
+) {
   const store = getStore();
   const hydrated = hydrateDiscLayout(item);
   const idx = store.discLayout.findIndex((d) => d.id === hydrated.id);
@@ -256,6 +300,30 @@ export function saveDiscLayoutItem(item: Omit<DiscLayout, "id"> & { id?: string 
 
 export function listDiscLayout() {
   return getStore().discLayout;
+}
+
+export function saveDiscNotMeasuredReason(
+  discId: string,
+  notMeasuredReason: NotMeasuredReason,
+  notMeasuredComment = "",
+) {
+  const store = getStore();
+  const idx = store.discLayout.findIndex((disc) => disc.id === discId);
+  if (idx < 0) throw new Error("Disc layout item not found");
+  store.discLayout[idx] = hydrateDiscLayout({
+    ...store.discLayout[idx],
+    notMeasuredReason,
+    notMeasuredComment,
+  });
+  saveStore(store);
+  return store.discLayout[idx];
+}
+
+export function saveExportReviewer(exportReviewer: string) {
+  const store = getStore();
+  store.exportReviewer = exportReviewer;
+  saveStore(store);
+  return exportReviewer;
 }
 
 export function importLimsWorklistJson(jsonText: string) {
@@ -290,7 +358,7 @@ export function importLimsWorklistJson(jsonText: string) {
     standard: payload.standard,
     worklistId: payload.worklistId,
     operatingMode: "medugu_lims_connected",
-    interpretationAuthority: "lis_interprets",
+    interpretationAuthority: "measurement_only",
   });
 
   const discLayout = payload.expectedDiscs.map((disc, index) =>
@@ -302,10 +370,13 @@ export function importLimsWorklistJson(jsonText: string) {
       discLot: "",
       discExpiryDate: "",
       expectedOnPlate: true,
+      notMeasuredReason: "",
+      notMeasuredComment: "",
     }),
   );
 
   store.currentPlate = importedPlate;
+  store.importedWorklist = { ...payload, importedAt: new Date().toISOString() };
   store.discLayout = discLayout;
   saveStore(store);
   return importedPlate;
@@ -320,31 +391,158 @@ export class LimsImportError extends Error {
   }
 }
 
+export type ExportReadinessItem = {
+  key: string;
+  label: string;
+  passed: boolean;
+  details: string;
+};
+
+function isMeasurementForDisc(measurement: DiskMeasurement, disc: DiscLayout) {
+  const samePosition = measurement.diskPosition.trim() === disc.diskPosition.trim();
+  const sameAntibiotic = measurement.antibioticCode.trim() === disc.antibioticCode.trim();
+  return samePosition && sameAntibiotic;
+}
+
+function hasValidMeasuredZone(measurement: DiskMeasurement) {
+  return (
+    typeof measurement.zoneDiameterMm === "number" &&
+    !Number.isNaN(measurement.zoneDiameterMm) &&
+    measurement.zoneDiameterMm >= 6 &&
+    measurement.zoneDiameterMm <= 50
+  );
+}
+
+export function getExpectedMeasurementPlan() {
+  return getStore().discLayout.filter((disc) => disc.expectedOnPlate);
+}
+
+export function getExportReadinessChecklist(): ExportReadinessItem[] {
+  const { currentPlate, measurements, plateQc, discLayout, exportReviewer } = getStore();
+  const expectedDiscs = discLayout.filter((disc) => disc.expectedOnPlate);
+  const unresolvedExpectedDiscs = expectedDiscs.filter((disc) => {
+    const measured = measurements.some(
+      (measurement) => isMeasurementForDisc(measurement, disc) && hasValidMeasuredZone(measurement),
+    );
+    return !measured && !disc.notMeasuredReason;
+  });
+  const manualEditIssues = measurements.filter(
+    (measurement) =>
+      measurement.manualEdited &&
+      (measurement.originalValue === null ||
+        measurement.correctedValue === null ||
+        !measurement.overrideReason.trim() ||
+        !measurement.reviewedBy.trim() ||
+        !measurement.reviewedAt.trim()),
+  );
+
+  return [
+    {
+      key: "plate",
+      label: "Plate record saved",
+      passed: Boolean(currentPlate?.id),
+      details: currentPlate?.id
+        ? `Saved plate ${currentPlate.id}`
+        : "Save or import a plate record.",
+    },
+    {
+      key: "qc",
+      label: "QC status set",
+      passed: Boolean(plateQc?.qcStatus),
+      details: plateQc?.qcStatus ?? "Complete plate QC before export.",
+    },
+    {
+      key: "expected-discs",
+      label: "Expected discs resolved",
+      passed: expectedDiscs.length > 0 && unresolvedExpectedDiscs.length === 0,
+      details:
+        expectedDiscs.length === 0
+          ? "No expected disc measurement plan is present."
+          : unresolvedExpectedDiscs.length === 0
+            ? `${expectedDiscs.length} expected disc(s) resolved by measurement or notMeasured reason.`
+            : `Resolve ${unresolvedExpectedDiscs.length} expected disc(s): ${unresolvedExpectedDiscs
+                .map((disc) => disc.diskPosition || disc.antibioticCode)
+                .join(", ")}.`,
+    },
+    {
+      key: "operator",
+      label: "Operator captured",
+      passed: Boolean(currentPlate?.createdBy.trim()),
+      details: currentPlate?.createdBy.trim() || "Enter operator/createdBy on the plate record.",
+    },
+    {
+      key: "reviewer",
+      label: "Reviewer captured",
+      passed: Boolean(exportReviewer.trim()),
+      details: exportReviewer.trim() || "Enter the export reviewer before export.",
+    },
+    {
+      key: "measurements",
+      label: "Measured zones valid",
+      passed: measurements.length > 0 && measurements.every(hasValidMeasuredZone),
+      details:
+        measurements.length === 0
+          ? "At least one measured zone is required by the Zone Result export contract."
+          : measurements.every(hasValidMeasuredZone)
+            ? `${measurements.length} measured zone(s) are valid.`
+            : "One or more measured zones are outside the valid 6-50 mm range.",
+    },
+    {
+      key: "override-audit",
+      label: "Manual override audit complete",
+      passed: manualEditIssues.length === 0,
+      details:
+        manualEditIssues.length === 0
+          ? "Manual corrections include required audit fields."
+          : `Complete audit fields for ${manualEditIssues.length} manual correction(s).`,
+    },
+  ];
+}
+
 export function validateZoneResultExport() {
-  const errors: string[] = [];
+  const errors = getExportReadinessChecklist()
+    .filter((item) => !item.passed)
+    .map((item) => `${item.label}: ${item.details}`);
   const { currentPlate, measurements, plateQc } = getStore();
 
-  if (!currentPlate) return ["No current plate record."];
+  if (!currentPlate)
+    return errors.length > 0 ? errors : ["Plate record saved: Save or import a plate record."];
   if (!currentPlate.accessionNumber.trim()) errors.push("Missing accession number.");
-  if (currentPlate.operatingMode !== "standalone" && !currentPlate.isolateId.trim()) errors.push("LIMS-connected mode requires isolateId.");
-  if (currentPlate.operatingMode !== "standalone" && !currentPlate.astPanelId.trim()) errors.push("LIMS-connected mode requires astPanelId.");
-  if (measurements.length === 0) errors.push("No measurements entered.");
-  if (plateQc?.qcStatus === "Reject image or repeat plate") errors.push("QC status is Reject image or repeat plate.");
+  if (currentPlate.operatingMode !== "standalone" && !currentPlate.isolateId.trim())
+    errors.push("LIMS-connected mode requires isolateId.");
+  if (currentPlate.operatingMode !== "standalone" && !currentPlate.astPanelId.trim())
+    errors.push("LIMS-connected mode requires astPanelId.");
+  if (plateQc?.qcStatus === "Reject image or repeat plate")
+    errors.push("QC status is Reject image or repeat plate.");
 
   measurements.forEach((m, i) => {
     if (!m.antibioticCode.trim()) errors.push(`Measurement ${i + 1}: missing antibioticCode.`);
-    if (typeof m.zoneDiameterMm !== "number" || Number.isNaN(m.zoneDiameterMm) || m.zoneDiameterMm < 6 || m.zoneDiameterMm > 50) {
-      errors.push(`Measurement ${i + 1}: zoneDiameterMm must be between 6 and 50.`);
+    if (m.manualEdited) {
+      if (m.originalValue === null)
+        errors.push(`Measurement ${i + 1}: manualEdited requires originalValue.`);
+      if (m.correctedValue === null)
+        errors.push(`Measurement ${i + 1}: manualEdited requires correctedValue.`);
+      if (!m.overrideReason.trim())
+        errors.push(`Measurement ${i + 1}: manualEdited requires overrideReason.`);
+      if (!m.reviewedBy.trim())
+        errors.push(`Measurement ${i + 1}: manualEdited requires reviewedBy.`);
+      if (!m.reviewedAt.trim())
+        errors.push(`Measurement ${i + 1}: manualEdited requires reviewedAt.`);
     }
-    if (m.manualEdited && !m.overrideReason.trim()) errors.push(`Measurement ${i + 1}: manualEdited requires overrideReason.`);
   });
 
   return errors;
 }
 
 export function exportZoneResultJson() {
-  const { currentPlate, measurements } = getStore();
+  const readinessIssues = validateZoneResultExport();
+  if (readinessIssues.length > 0) {
+    throw new Error(`Zone Result export is not ready: ${readinessIssues.join("; ")}`);
+  }
+
+  const { currentPlate, measurements, exportReviewer } = getStore();
   if (!currentPlate) throw new Error("No current plate to export");
+  const readAt = new Date().toISOString();
 
   const audit = measurements
     .filter((m) => m.manualEdited)
@@ -367,7 +565,7 @@ export function exportZoneResultJson() {
     readerDeviceId: currentPlate.captureDevice,
     readerSoftwareVersion: "DiskDiff Reader v1",
     operator: currentPlate.createdBy,
-    readAt: new Date().toISOString(),
+    readAt,
     accessionId: currentPlate.externalLisAccessionId || currentPlate.accessionNumber,
     accessionNumber: currentPlate.accessionNumber,
     isolateId: currentPlate.isolateId,
@@ -389,8 +587,8 @@ export function exportZoneResultJson() {
       correctedValue: m.correctedValue,
       overrideReason: m.overrideReason || null,
       reviewStatus: m.reviewStatus,
-      reviewedBy: m.reviewedBy || null,
-      reviewedAt: m.reviewedAt || null,
+      reviewedBy: m.reviewedBy || exportReviewer,
+      reviewedAt: m.reviewedAt || readAt,
       comment: m.comment,
     })),
     audit,
@@ -414,7 +612,8 @@ export function generateDraftReportText() {
     "",
     "Manual zone measurements:",
     ...measurements.map(
-      (m) => `${m.diskPosition || "N/A"}: ${m.antibioticCode || "N/A"} ${m.antibioticName || m.antimicrobialName} = ${m.zoneDiameterMm} mm`,
+      (m) =>
+        `${m.diskPosition || "N/A"}: ${m.antibioticCode || "N/A"} ${m.antibioticName || m.antimicrobialName} = ${m.zoneDiameterMm} mm`,
     ),
   ];
 
