@@ -1,5 +1,9 @@
 import { LimsWorklistSchema } from "./schemas/lims-worklist.schema";
 import { ZoneResultEnvelopeSchema, type ZoneResultEnvelope } from "./schemas/zone-result.schema";
+import {
+  formatLimsImportError,
+  type FormattedLimsImportError,
+} from "./schemas/format-lims-import-error";
 
 export type PlateStatus = "Draft" | "QC Complete";
 export type QcStatus =
@@ -255,8 +259,17 @@ export function listDiscLayout() {
 }
 
 export function importLimsWorklistJson(jsonText: string) {
-  const raw = JSON.parse(jsonText) as unknown;
-  const payload = LimsWorklistSchema.parse(raw);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(jsonText);
+  } catch (e) {
+    throw new LimsImportError(formatLimsImportError(e));
+  }
+  const result = LimsWorklistSchema.safeParse(raw);
+  if (!result.success) {
+    throw new LimsImportError(formatLimsImportError(result.error, raw));
+  }
+  const payload = result.data;
   const store = getStore();
   const importedPlate = hydratePlateRecord({
     ...store.currentPlate,
@@ -296,6 +309,15 @@ export function importLimsWorklistJson(jsonText: string) {
   store.discLayout = discLayout;
   saveStore(store);
   return importedPlate;
+}
+
+export class LimsImportError extends Error {
+  formatted: FormattedLimsImportError;
+  constructor(formatted: FormattedLimsImportError) {
+    super(formatted.summary);
+    this.name = "LimsImportError";
+    this.formatted = formatted;
+  }
 }
 
 export function validateZoneResultExport() {
