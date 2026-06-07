@@ -1,5 +1,4 @@
 import { exportZoneResultJson } from "./diskdiff-store";
-import { MEDUGU_ZONE_RESULT_INBOUND_ENDPOINT } from "./medugu-zone-result-intake";
 import { ZoneResultEnvelopeSchema, type ZoneResultEnvelope } from "./schemas/zone-result.schema";
 
 export type ZoneResultSendState = "ready" | "sending" | "sent" | "failed";
@@ -87,13 +86,23 @@ export async function sendValidatedZoneResultEnvelope(
     return {
       state: "failed",
       reason: "missing_auth_token",
-      message: "Enter the Medugu ZoneResult bearer token before sending to LIS.",
+      message: "Missing Medugu bearer token: enter the bearer token before sending to LIS.",
+      payload,
+    };
+  }
+
+  const endpointResult = validateFullMeduguEndpoint(options.endpoint);
+  if (!endpointResult.ok) {
+    return {
+      state: "failed",
+      reason: endpointResult.reason,
+      message: endpointResult.message,
       payload,
     };
   }
 
   const fetchImpl = options.fetchImpl ?? fetch;
-  const endpoint = options.endpoint ?? MEDUGU_ZONE_RESULT_INBOUND_ENDPOINT;
+  const endpoint = endpointResult.endpoint;
 
   try {
     const response = await fetchImpl(endpoint, {
@@ -127,7 +136,7 @@ export async function sendValidatedZoneResultEnvelope(
     return {
       state: "failed",
       reason: "request_failed",
-      message: `Could not send Zone Result to Medugu: ${readableError(error)}`,
+      message: `Request/network failure sending Zone Result to Medugu: ${readableError(error)}`,
       payload,
     };
   }
@@ -135,6 +144,37 @@ export async function sendValidatedZoneResultEnvelope(
 
 function readableError(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+
+type EndpointValidationResult =
+  | { ok: true; endpoint: string }
+  | { ok: false; reason: "missing_endpoint" | "invalid_endpoint"; message: string };
+
+function validateFullMeduguEndpoint(endpoint: string | undefined): EndpointValidationResult {
+  const trimmedEndpoint = endpoint?.trim() ?? "";
+  if (!trimmedEndpoint) {
+    return {
+      ok: false,
+      reason: "missing_endpoint",
+      message:
+        "Missing Medugu endpoint: enter the full Medugu URL before sending to LIS. Example: https://your-medugu-host/api/medugu/zone-results",
+    };
+  }
+
+  try {
+    const url = new URL(trimmedEndpoint);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      throw new Error("Unsupported URL protocol");
+    }
+    return { ok: true, endpoint: trimmedEndpoint };
+  } catch {
+    return {
+      ok: false,
+      reason: "invalid_endpoint",
+      message:
+        "Invalid Medugu endpoint: enter the full Medugu URL, not a relative path. Example: https://your-medugu-host/api/medugu/zone-results",
+    };
+  }
 }
 
 async function parseJsonResponse(
@@ -152,6 +192,10 @@ async function parseJsonResponse(
 
 function formatFailureMessage(status: number, body: MeduguZoneResultResponse | undefined) {
   const details = body?.details?.filter((detail) => detail.trim()).join("; ");
+  if (status === 401 || status === 403 || body?.reason === "unauthenticated") {
+    const authReason = details || body?.reason || "missing or invalid bearer token";
+    return `Medugu authentication failed (${status}): ${authReason}`;
+  }
   if (details) return `Medugu rejected the Zone Result (${status}): ${details}`;
   if (body?.reason) return `Medugu rejected the Zone Result (${status}): ${body.reason}`;
   return `Medugu rejected the Zone Result (${status}).`;

@@ -27,7 +27,7 @@ export function ReportsPage() {
   const [jsonOutput, setJsonOutput] = useState("");
   const [reviewer, setReviewer] = useState(() => getWorkflowState().exportReviewer);
   const [readinessRefresh, setReadinessRefresh] = useState(0);
-  const [lisEndpoint, setLisEndpoint] = useState("/api/medugu/zone-results");
+  const [lisEndpoint, setLisEndpoint] = useState("");
   const [lisToken, setLisToken] = useState("");
   const [sendState, setSendState] = useState<ZoneResultSendState>("ready");
   const [sendMessage, setSendMessage] = useState(
@@ -83,13 +83,19 @@ export function ReportsPage() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium" htmlFor="lis-endpoint">
-                      Medugu inbound endpoint
+                      Full Medugu endpoint URL
                     </label>
                     <Input
                       id="lis-endpoint"
                       value={lisEndpoint}
+                      placeholder="https://your-medugu-host/api/medugu/zone-results"
+                      aria-describedby="lis-endpoint-help"
                       onChange={(event) => setLisEndpoint(event.target.value)}
                     />
+                    <p id="lis-endpoint-help" className="text-xs text-muted-foreground">
+                      Endpoint must be the full Medugu URL, not a relative path. Example:
+                      https://your-medugu-host/api/medugu/zone-results
+                    </p>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium" htmlFor="lis-token">
@@ -100,10 +106,17 @@ export function ReportsPage() {
                       type="password"
                       value={lisToken}
                       placeholder="Medugu ZoneResult token"
+                      aria-describedby="lis-token-help"
                       onChange={(event) => setLisToken(event.target.value)}
                     />
+                    <p id="lis-token-help" className="text-xs text-muted-foreground">
+                      Bearer token is required; it is sent only in the Authorization header.
+                    </p>
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Manual JSON export remains available below if live send is not configured or fails.
+                </p>
                 <Button
                   disabled={sendState === "sending"}
                   onClick={async () => {
