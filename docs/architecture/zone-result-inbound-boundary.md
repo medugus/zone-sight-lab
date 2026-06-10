@@ -15,8 +15,8 @@ Zone Reader remains a measurement source. Medugu remains the owner of interpreta
 
 ## Server intake path
 
-- HTTP path: `POST /api/medugu/zone-results`
-- Route file: `src/routes/api/medugu/zone-results.ts`
+- HTTP path: `POST /api/public/zone-reader/result`
+- Route file: `src/routes/api/public/zone-reader/result.ts`
 - Handler function: `handleMeduguZoneResultInboundRequest()`
 - Core import function: `ingestZoneResultPayload()`
 - Authentication helper: `authenticateZoneResultInboundRequest()`

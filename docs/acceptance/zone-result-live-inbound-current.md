@@ -4,8 +4,8 @@
 
 The current Medugu-side live boundary supports a single authenticated inbound JSON upload:
 
-- Endpoint: `POST /api/medugu/zone-results`
-- Server route: `src/routes/api/medugu/zone-results.ts`
+- Endpoint: `POST /api/public/zone-reader/result`
+- Server route: `src/routes/api/public/zone-reader/result.ts`
 - Request handler: `handleMeduguZoneResultInboundRequest()`
 - Core intake function: `ingestZoneResultPayload()`
 - Auth helper: `authenticateZoneResultInboundRequest()`

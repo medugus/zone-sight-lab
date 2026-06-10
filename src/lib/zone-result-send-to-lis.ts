@@ -28,6 +28,9 @@ type SendOptions = {
   fetchImpl?: FetchLike;
 };
 
+export const MEDUGU_ZONE_RESULT_ENDPOINT_PATH = "/api/public/zone-reader/result";
+export const MEDUGU_ZONE_RESULT_ENDPOINT_EXAMPLE = `https://your-medugu-host${MEDUGU_ZONE_RESULT_ENDPOINT_PATH}`;
+
 type MeduguZoneResultResponse = {
   ok?: boolean;
   status?: number;
@@ -148,7 +151,11 @@ function readableError(error: unknown) {
 
 type EndpointValidationResult =
   | { ok: true; endpoint: string }
-  | { ok: false; reason: "missing_endpoint" | "invalid_endpoint"; message: string };
+  | {
+      ok: false;
+      reason: "missing_endpoint" | "invalid_endpoint" | "preview_endpoint";
+      message: string;
+    };
 
 function validateFullMeduguEndpoint(endpoint: string | undefined): EndpointValidationResult {
   const trimmedEndpoint = endpoint?.trim() ?? "";
@@ -156,8 +163,7 @@ function validateFullMeduguEndpoint(endpoint: string | undefined): EndpointValid
     return {
       ok: false,
       reason: "missing_endpoint",
-      message:
-        "Missing Medugu endpoint: enter the full Medugu URL before sending to LIS. Example: https://your-medugu-host/api/medugu/zone-results",
+      message: `Missing Medugu endpoint: enter the full Medugu URL before sending to LIS. Example: ${MEDUGU_ZONE_RESULT_ENDPOINT_EXAMPLE}`,
     };
   }
 
@@ -166,15 +172,34 @@ function validateFullMeduguEndpoint(endpoint: string | undefined): EndpointValid
     if (url.protocol !== "https:" && url.protocol !== "http:") {
       throw new Error("Unsupported URL protocol");
     }
+    if (isPreviewMeduguHost(url.hostname)) {
+      return {
+        ok: false,
+        reason: "preview_endpoint",
+        message: `Preview Medugu endpoint blocked: use the published/stable Medugu URL for Send to LIS. Obvious preview hosts such as id-preview--... or preview--... are not allowed. Example: ${MEDUGU_ZONE_RESULT_ENDPOINT_EXAMPLE}`,
+      };
+    }
     return { ok: true, endpoint: trimmedEndpoint };
   } catch {
     return {
       ok: false,
       reason: "invalid_endpoint",
-      message:
-        "Invalid Medugu endpoint: enter the full Medugu URL, not a relative path. Example: https://your-medugu-host/api/medugu/zone-results",
+      message: `Invalid Medugu endpoint: enter the full Medugu URL, not a relative path. Example: ${MEDUGU_ZONE_RESULT_ENDPOINT_EXAMPLE}`,
     };
   }
+}
+
+export function isPreviewMeduguHost(hostname: string) {
+  const labels = hostname.toLowerCase().split(".").filter(Boolean);
+  return labels.some(
+    (label) =>
+      label === "preview" ||
+      label.startsWith("preview--") ||
+      label.startsWith("id-preview--") ||
+      label.includes("-preview--") ||
+      label.includes("--preview--") ||
+      label.endsWith("--preview"),
+  );
 }
 
 async function parseJsonResponse(
@@ -195,6 +220,9 @@ function formatFailureMessage(status: number, body: MeduguZoneResultResponse | u
   if (status === 401 || status === 403 || body?.reason === "unauthenticated") {
     const authReason = details || body?.reason || "missing or invalid bearer token";
     return `Medugu authentication failed (${status}): ${authReason}`;
+  }
+  if (status === 404) {
+    return `Medugu endpoint was not found (404). Confirm the full URL uses ${MEDUGU_ZONE_RESULT_ENDPOINT_PATH}.`;
   }
   if (details) return `Medugu rejected the Zone Result (${status}): ${details}`;
   if (body?.reason) return `Medugu rejected the Zone Result (${status}): ${body.reason}`;

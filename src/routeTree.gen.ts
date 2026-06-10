@@ -20,7 +20,7 @@ import { Route as CaptureRouteImport } from './routes/capture'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiMeduguZoneResultsRouteImport } from './routes/api/medugu/zone-results'
+import { Route as ApiPublicZoneReaderResultRouteImport } from './routes/api/public/zone-reader/result'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -77,9 +77,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiMeduguZoneResultsRoute = ApiMeduguZoneResultsRouteImport.update({
-  id: '/api/medugu/zone-results',
-  path: '/api/medugu/zone-results',
+const ApiPublicZoneReaderResultRoute = ApiPublicZoneReaderResultRouteImport.update({
+  id: '/api/public/zone-reader/result',
+  path: '/api/public/zone-reader/result',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -95,7 +95,7 @@ export interface FileRoutesByFullPath {
   '/qc-strains': typeof QcStrainsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
-  '/api/medugu/zone-results': typeof ApiMeduguZoneResultsRoute
+  '/api/public/zone-reader/result': typeof ApiPublicZoneReaderResultRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -109,7 +109,7 @@ export interface FileRoutesByTo {
   '/qc-strains': typeof QcStrainsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
-  '/api/medugu/zone-results': typeof ApiMeduguZoneResultsRoute
+  '/api/public/zone-reader/result': typeof ApiPublicZoneReaderResultRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -124,7 +124,7 @@ export interface FileRoutesById {
   '/qc-strains': typeof QcStrainsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
-  '/api/medugu/zone-results': typeof ApiMeduguZoneResultsRoute
+  '/api/public/zone-reader/result': typeof ApiPublicZoneReaderResultRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -140,7 +140,7 @@ export interface FileRouteTypes {
     | '/qc-strains'
     | '/reports'
     | '/settings'
-    | '/api/medugu/zone-results'
+    | '/api/public/zone-reader/result'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -154,7 +154,7 @@ export interface FileRouteTypes {
     | '/qc-strains'
     | '/reports'
     | '/settings'
-    | '/api/medugu/zone-results'
+    | '/api/public/zone-reader/result'
   id:
     | '__root__'
     | '/'
@@ -168,7 +168,7 @@ export interface FileRouteTypes {
     | '/qc-strains'
     | '/reports'
     | '/settings'
-    | '/api/medugu/zone-results'
+    | '/api/public/zone-reader/result'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -183,7 +183,7 @@ export interface RootRouteChildren {
   QcStrainsRoute: typeof QcStrainsRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
-  ApiMeduguZoneResultsRoute: typeof ApiMeduguZoneResultsRoute
+  ApiPublicZoneReaderResultRoute: typeof ApiPublicZoneReaderResultRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -265,11 +265,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/medugu/zone-results': {
-      id: '/api/medugu/zone-results'
-      path: '/api/medugu/zone-results'
-      fullPath: '/api/medugu/zone-results'
-      preLoaderRoute: typeof ApiMeduguZoneResultsRouteImport
+    '/api/public/zone-reader/result': {
+      id: '/api/public/zone-reader/result'
+      path: '/api/public/zone-reader/result'
+      fullPath: '/api/public/zone-reader/result'
+      preLoaderRoute: typeof ApiPublicZoneReaderResultRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -287,7 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   QcStrainsRoute: QcStrainsRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
-  ApiMeduguZoneResultsRoute: ApiMeduguZoneResultsRoute,
+  ApiPublicZoneReaderResultRoute: ApiPublicZoneReaderResultRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
