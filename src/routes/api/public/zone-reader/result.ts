@@ -3,7 +3,7 @@ import {
   handleMeduguZoneResultInboundRequest,
   type ZoneResultIntakeStore,
   MEDUGU_ZONE_RESULT_TOKEN_ENV,
-} from "../../../lib/medugu-zone-result-intake";
+} from "../../../../lib/medugu-zone-result-intake";
 
 const meduguZoneResultIntakeStore: ZoneResultIntakeStore = {
   accessions: [],
@@ -17,7 +17,7 @@ function readIntakeToken() {
   );
 }
 
-export const Route = createFileRoute("/api/medugu/zone-results")({
+export const Route = createFileRoute("/api/public/zone-reader/result")({
   server: {
     handlers: {
       POST: async ({ request }) =>

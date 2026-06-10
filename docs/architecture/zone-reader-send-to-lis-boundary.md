@@ -23,7 +23,7 @@ Manual JSON export remains available if live sending fails or is not configured.
 Default endpoint:
 
 ```text
-POST /api/medugu/zone-results
+POST /api/public/zone-reader/result
 ```
 
 Authentication uses the same bearer-token mechanism expected by the Medugu inbound boundary:

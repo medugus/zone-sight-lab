@@ -1,7 +1,7 @@
 import { ZodError } from "zod";
 import { ZoneResultEnvelopeSchema, type ZoneResultEnvelope } from "./schemas/zone-result.schema";
 
-export const MEDUGU_ZONE_RESULT_INBOUND_ENDPOINT = "/api/medugu/zone-results";
+export const MEDUGU_ZONE_RESULT_INBOUND_ENDPOINT = "/api/public/zone-reader/result";
 export const MEDUGU_ZONE_RESULT_TOKEN_ENV = "MEDUGU_ZONE_RESULT_INTAKE_TOKEN";
 
 type ProtectedClinicalFields = {
@@ -266,7 +266,9 @@ export function ingestZoneResultPayload(
 
   const acceptedResults = zoneResult.results.filter((result) => result.reviewStatus === "accepted");
   if (acceptedResults.length === 0) {
-    return reject(audit, 422, "no_accepted_rows", ["ZoneResult contained no accepted rows to map."]);
+    return reject(audit, 422, "no_accepted_rows", [
+      "ZoneResult contained no accepted rows to map.",
+    ]);
   }
 
   const rowMatches = acceptedResults.map((result) => {

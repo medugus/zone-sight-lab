@@ -40,12 +40,12 @@ The token is operator-entered on the Reports page for this minimal step. Medugu 
 
 The Reports page displays clear send states:
 
-| State | Meaning |
-| --- | --- |
-| Ready to send | The action is idle and ready for a validated envelope. |
-| Sending | The POST request is in progress. |
-| Sent successfully | Medugu accepted the request; Zone Reader shows a concise accepted-row/audit summary only. |
-| Failed | The payload failed readiness/schema validation before send, the token is missing/invalid, Medugu rejected the request, or the network request failed. |
+| State             | Meaning                                                                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ready to send     | The action is idle and ready for a validated envelope.                                                                                                |
+| Sending           | The POST request is in progress.                                                                                                                      |
+| Sent successfully | Medugu accepted the request; Zone Reader shows a concise accepted-row/audit summary only.                                                             |
+| Failed            | The payload failed readiness/schema validation before send, the token is missing/invalid, Medugu rejected the request, or the network request failed. |
 
 Manual `Export Zone Result JSON` remains visible as the fallback path on the same page.
 
@@ -54,7 +54,12 @@ Manual `Export Zone Result JSON` remains visible as the fallback path on the sam
 The live send tests cover:
 
 - send success with exact payload reuse and bearer auth header
+- stable published `lovable.app` host allowed
+- obvious preview host blocked before dispatch
+- `404` diagnostics that reference `/api/public/zone-reader/result`
 - auth failure (`401 unauthenticated`) with readable UI/send state
+- missing bearer token before dispatch
+- missing/relative endpoint diagnostics using `/api/public/zone-reader/result`
 - schema validation failure before send, with no network call
 - network/request failure with readable failed state
 - manual JSON export remaining visible as fallback

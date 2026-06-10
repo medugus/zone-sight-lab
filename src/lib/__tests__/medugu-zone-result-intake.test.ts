@@ -104,7 +104,7 @@ function ingest(input: unknown, targetStore = store(), authenticated = true) {
 describe("Medugu authenticated ZoneResult inbound boundary", () => {
   it("accepts an authenticated valid upload, stores audit, maps raw fields, and reruns downstream paths", async () => {
     const targetStore = store();
-    const request = new Request("https://medugu.local/api/medugu/zone-results", {
+    const request = new Request("https://medugu.local/api/public/zone-reader/result", {
       method: "POST",
       headers: { authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify(payload()),
@@ -149,7 +149,7 @@ describe("Medugu authenticated ZoneResult inbound boundary", () => {
   it("rejects invalid JSON before schema validation while preserving the raw body", async () => {
     const targetStore = store();
     const rawBody = '{"schemaVersion":"1.0.0",';
-    const request = new Request("https://medugu.local/api/medugu/zone-results", {
+    const request = new Request("https://medugu.local/api/public/zone-reader/result", {
       method: "POST",
       headers: { authorization: `Bearer ${TOKEN}` },
       body: rawBody,
