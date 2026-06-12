@@ -32,7 +32,6 @@ type SendOptions = {
 
 type MeduguZoneResultResponse = {
   ok?: boolean;
-  status?: number;
   receiptId?: string;
   status?: string;
   auditId?: string;
