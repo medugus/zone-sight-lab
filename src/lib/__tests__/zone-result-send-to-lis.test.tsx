@@ -149,6 +149,73 @@ describe("Zone Result Send to LIS action", () => {
     expect(payload.releaseAuthority).toBe("LIS");
   });
 
+  it("allows a stable published lovable.app Medugu host", async () => {
+    prepareReadyZoneResult();
+    const fetchImpl = vi.fn(async () =>
+      Response.json(
+        {
+          ok: true,
+          receiptId: "receipt-lovable",
+          status: "pending_review",
+          mappedRowIds: [],
+        },
+        { status: 202 },
+      ),
+    );
+
+    const result = await sendCurrentZoneResultToLis({
+      endpoint: "https://medugu-stable.lovable.app/api/public/zone-reader/result",
+      bearerToken: "secret-token",
+      fetchImpl,
+    });
+
+    expect(result.state).toBe("sent");
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("blocks obvious preview Medugu hosts before dispatch", async () => {
+    prepareReadyZoneResult();
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ ok: true }, { status: 202 }),
+    );
+
+    const result = await sendCurrentZoneResultToLis({
+      endpoint:
+        "https://id-preview--medugu.lovable.app/api/public/zone-reader/result",
+      bearerToken: "secret-token",
+      fetchImpl,
+    });
+
+    expect(result).toMatchObject({
+      state: "failed",
+      reason: "preview_endpoint",
+    });
+    expect(result.message).toContain("Preview Medugu endpoint blocked");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("shows a 404 diagnostic that references the deployed Medugu path", async () => {
+    prepareReadyZoneResult();
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ ok: false }, { status: 404 }),
+    );
+
+    const result = await sendCurrentZoneResultToLis({
+      endpoint: "https://medugu.example.test/wrong-path",
+      bearerToken: "secret-token",
+      fetchImpl,
+    });
+
+    expect(result).toMatchObject({
+      state: "failed",
+      status: 404,
+      reason: "http_404",
+    });
+    expect(result.message).toBe(
+      "Medugu endpoint was not found (404). Confirm the full URL uses /api/public/zone-reader/result.",
+    );
+  });
+
   it("shows an auth failure as a readable failed state", async () => {
     prepareReadyZoneResult();
     const fetchImpl = vi.fn(async () =>
@@ -258,6 +325,8 @@ describe("Zone Result Send to LIS action", () => {
     expect(html).toContain("Full Medugu endpoint URL");
     expect(html).toContain("Endpoint must be the full Medugu URL, not a relative path.");
     expect(html).toContain("https://your-medugu-host/api/public/zone-reader/result");
+    expect(html).toContain("Published/stable lovable.app hosts are allowed");
+    expect(html).toContain("id-preview--... or preview--... are blocked");
     expect(html).toContain("Bearer token is required");
     expect(html).toContain("Manual JSON export remains available below");
     expect(html).toContain("Export Zone Result JSON");

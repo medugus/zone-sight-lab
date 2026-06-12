@@ -16,6 +16,7 @@ import {
   validateZoneResultExport,
 } from "@/lib/diskdiff-store";
 import {
+  MEDUGU_ZONE_RESULT_ENDPOINT_EXAMPLE,
   sendCurrentZoneResultToLis,
   type ZoneResultSendState,
 } from "@/lib/zone-result-send-to-lis";
@@ -88,13 +89,17 @@ export function ReportsPage() {
                     <Input
                       id="lis-endpoint"
                       value={lisEndpoint}
-                      placeholder="https://your-medugu-host/api/public/zone-reader/result"
+                      placeholder={MEDUGU_ZONE_RESULT_ENDPOINT_EXAMPLE}
                       aria-describedby="lis-endpoint-help"
                       onChange={(event) => setLisEndpoint(event.target.value)}
                     />
                     <p id="lis-endpoint-help" className="text-xs text-muted-foreground">
                       Endpoint must be the full Medugu URL, not a relative path. Example:
-                      https://your-medugu-host/api/public/zone-reader/result
+                      {MEDUGU_ZONE_RESULT_ENDPOINT_EXAMPLE}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Published/stable lovable.app hosts are allowed. Obvious preview hosts such as
+                      id-preview--... or preview--... are blocked.
                     </p>
                   </div>
                   <div className="space-y-1.5">
