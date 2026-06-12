@@ -8,6 +8,8 @@ export type ZoneResultSendResult =
       state: "sent";
       message: string;
       status: number;
+      receiptId?: string;
+      queueStatus?: string;
       auditId?: string;
       summary: string;
       payload: ZoneResultEnvelope;
@@ -31,6 +33,8 @@ type SendOptions = {
 type MeduguZoneResultResponse = {
   ok?: boolean;
   status?: number;
+  receiptId?: string;
+  status?: string;
   auditId?: string;
   mappedRowIds?: string[];
   idempotent?: boolean;
@@ -127,6 +131,8 @@ export async function sendValidatedZoneResultEnvelope(
     return {
       state: "sent",
       status: response.status,
+      receiptId: body?.receiptId,
+      queueStatus: body?.status,
       auditId: body?.auditId,
       summary: summarizeMeduguResult(body),
       message: summarizeMeduguResult(body),
@@ -157,7 +163,7 @@ function validateFullMeduguEndpoint(endpoint: string | undefined): EndpointValid
       ok: false,
       reason: "missing_endpoint",
       message:
-        "Missing Medugu endpoint: enter the full Medugu URL before sending to LIS. Example: https://your-medugu-host/api/medugu/zone-results",
+        "Missing Medugu endpoint: enter the full Medugu URL before sending to LIS. Example: https://your-medugu-host/api/public/zone-reader/result",
     };
   }
 
@@ -172,7 +178,7 @@ function validateFullMeduguEndpoint(endpoint: string | undefined): EndpointValid
       ok: false,
       reason: "invalid_endpoint",
       message:
-        "Invalid Medugu endpoint: enter the full Medugu URL, not a relative path. Example: https://your-medugu-host/api/medugu/zone-results",
+        "Invalid Medugu endpoint: enter the full Medugu URL, not a relative path. Example: https://your-medugu-host/api/public/zone-reader/result",
     };
   }
 }
@@ -202,8 +208,14 @@ function formatFailureMessage(status: number, body: MeduguZoneResultResponse | u
 }
 
 function summarizeMeduguResult(body: MeduguZoneResultResponse | undefined) {
-  const mappedCount = body?.mappedRowIds?.length ?? 0;
-  const auditText = body?.auditId ? ` Audit ${body.auditId}.` : "";
-  const idempotentText = body?.idempotent ? " No row changes were needed." : "";
-  return `Sent successfully. Medugu accepted ${mappedCount} measurement row${mappedCount === 1 ? "" : "s"}.${auditText}${idempotentText}`;
+  const receipt = body?.receiptId ?? body?.auditId;
+  const receiptText = receipt ? ` Receipt ${receipt}.` : "";
+  const statusText =
+    body?.status === "pending_review"
+      ? " Queued for clinical review."
+      : " Stored by Medugu.";
+  const idempotentText = body?.idempotent
+    ? " This payload was already stored; no duplicate was created."
+    : "";
+  return `Sent successfully.${statusText}${receiptText}${idempotentText}`;
 }

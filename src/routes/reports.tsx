@@ -31,7 +31,7 @@ export function ReportsPage() {
   const [lisToken, setLisToken] = useState("");
   const [sendState, setSendState] = useState<ZoneResultSendState>("ready");
   const [sendMessage, setSendMessage] = useState(
-    "Ready to send validated Zone Result payload to LIS.",
+    "Ready to send a validated Zone Result to the LIMS review queue.",
   );
   const readiness = getExportReadinessChecklist();
 
@@ -88,13 +88,13 @@ export function ReportsPage() {
                     <Input
                       id="lis-endpoint"
                       value={lisEndpoint}
-                      placeholder="https://your-medugu-host/api/medugu/zone-results"
+                      placeholder="https://your-medugu-host/api/public/zone-reader/result"
                       aria-describedby="lis-endpoint-help"
                       onChange={(event) => setLisEndpoint(event.target.value)}
                     />
                     <p id="lis-endpoint-help" className="text-xs text-muted-foreground">
                       Endpoint must be the full Medugu URL, not a relative path. Example:
-                      https://your-medugu-host/api/medugu/zone-results
+                      https://your-medugu-host/api/public/zone-reader/result
                     </p>
                   </div>
                   <div className="space-y-1.5">
@@ -123,7 +123,7 @@ export function ReportsPage() {
                     void readinessRefresh;
                     setWarnings([]);
                     setSendState("sending");
-                    setSendMessage("Sending validated Zone Result payload to Medugu...");
+                    setSendMessage("Sending validated Zone Result to the Medugu review queue...");
                     const result = await sendCurrentZoneResultToLis({
                       endpoint: lisEndpoint,
                       bearerToken: lisToken,

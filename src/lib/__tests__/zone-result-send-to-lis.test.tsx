@@ -113,22 +113,30 @@ describe("Zone Result Send to LIS action", () => {
     prepareReadyZoneResult();
     const fetchImpl = vi.fn(async () =>
       Response.json(
-        { ok: true, auditId: "audit-123", mappedRowIds: ["row-1"], idempotent: false },
+        {
+          ok: true,
+          receiptId: "receipt-123",
+          status: "pending_review",
+          mappedRowIds: [],
+          idempotent: false,
+        },
         { status: 202 },
       ),
     );
 
     const result = await sendCurrentZoneResultToLis({
-      endpoint: "https://medugu.example.test/api/medugu/zone-results",
+      endpoint: "https://medugu.example.test/api/public/zone-reader/result",
       bearerToken: "secret-token",
       fetchImpl,
     });
 
     expect(result.state).toBe("sent");
     expect(result.message).toContain("Sent successfully");
+    expect(result.message).toContain("Queued for clinical review");
+    expect(result.message).toContain("receipt-123");
     expect(fetchImpl).toHaveBeenCalledOnce();
     const [endpoint, init] = fetchImpl.mock.calls[0];
-    expect(endpoint).toBe("https://medugu.example.test/api/medugu/zone-results");
+    expect(endpoint).toBe("https://medugu.example.test/api/public/zone-reader/result");
     expect(init?.method).toBe("POST");
     expect(init?.headers).toEqual({
       "Content-Type": "application/json",
@@ -151,7 +159,7 @@ describe("Zone Result Send to LIS action", () => {
     );
 
     const result = await sendCurrentZoneResultToLis({
-      endpoint: "https://medugu.example.test/api/medugu/zone-results",
+      endpoint: "https://medugu.example.test/api/public/zone-reader/result",
       bearerToken: "bad-token",
       fetchImpl,
     });
@@ -166,7 +174,7 @@ describe("Zone Result Send to LIS action", () => {
     const fetchImpl = vi.fn(async () => Response.json({ ok: true }, { status: 202 }));
 
     const result = await sendCurrentZoneResultToLis({
-      endpoint: "https://medugu.example.test/api/medugu/zone-results",
+      endpoint: "https://medugu.example.test/api/public/zone-reader/result",
       bearerToken: " ",
       fetchImpl,
     });
@@ -190,7 +198,7 @@ describe("Zone Result Send to LIS action", () => {
 
     expect(result).toMatchObject({ state: "failed", reason: "missing_endpoint" });
     expect(result.message).toBe(
-      "Missing Medugu endpoint: enter the full Medugu URL before sending to LIS. Example: https://your-medugu-host/api/medugu/zone-results",
+      "Missing Medugu endpoint: enter the full Medugu URL before sending to LIS. Example: https://your-medugu-host/api/public/zone-reader/result",
     );
     expect(fetchImpl).not.toHaveBeenCalled();
   });
@@ -200,14 +208,14 @@ describe("Zone Result Send to LIS action", () => {
     const fetchImpl = vi.fn(async () => Response.json({ ok: true }, { status: 202 }));
 
     const result = await sendCurrentZoneResultToLis({
-      endpoint: "/api/medugu/zone-results",
+      endpoint: "/api/public/zone-reader/result",
       bearerToken: "secret-token",
       fetchImpl,
     });
 
     expect(result).toMatchObject({ state: "failed", reason: "invalid_endpoint" });
     expect(result.message).toBe(
-      "Invalid Medugu endpoint: enter the full Medugu URL, not a relative path. Example: https://your-medugu-host/api/medugu/zone-results",
+      "Invalid Medugu endpoint: enter the full Medugu URL, not a relative path. Example: https://your-medugu-host/api/public/zone-reader/result",
     );
     expect(fetchImpl).not.toHaveBeenCalled();
   });
@@ -233,7 +241,7 @@ describe("Zone Result Send to LIS action", () => {
     });
 
     const result = await sendCurrentZoneResultToLis({
-      endpoint: "https://medugu.example.test/api/medugu/zone-results",
+      endpoint: "https://medugu.example.test/api/public/zone-reader/result",
       bearerToken: "secret-token",
       fetchImpl,
     });
@@ -249,7 +257,7 @@ describe("Zone Result Send to LIS action", () => {
     expect(html).toContain("Send to LIS");
     expect(html).toContain("Full Medugu endpoint URL");
     expect(html).toContain("Endpoint must be the full Medugu URL, not a relative path.");
-    expect(html).toContain("https://your-medugu-host/api/medugu/zone-results");
+    expect(html).toContain("https://your-medugu-host/api/public/zone-reader/result");
     expect(html).toContain("Bearer token is required");
     expect(html).toContain("Manual JSON export remains available below");
     expect(html).toContain("Export Zone Result JSON");
