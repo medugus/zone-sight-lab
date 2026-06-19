@@ -8,6 +8,7 @@ export type OperatingMode = "standalone" | "medugu_lims_connected" | "third_part
 export type InterpretationAuthority = "measurement_only" | "zone_reader_interprets" | "lis_interprets";
 export type AstStandard = "EUCAST" | "CLSI" | "LOCAL";
 export type ImageQualityStatus = "acceptable" | "needs_review" | "rejected";
+export type MeasurementMethod = "Manual ruler" | "Camera assisted";
 
 export type PlateRecord = {
   id: string;
@@ -77,7 +78,7 @@ export type DiskMeasurement = {
   antimicrobialName: string;
   diskContent: string;
   zoneDiameterMm: number;
-  measurementMethod: "Manual ruler";
+  measurementMethod: MeasurementMethod;
   comment: string;
   antibioticCode: string;
   antibioticName: string;
@@ -113,7 +114,8 @@ function hydratePlateRecord(raw: Partial<PlateRecord>): PlateRecord {
 
 function hydrateMeasurement(raw: Partial<DiskMeasurement>): DiskMeasurement {
   const zone = Number(raw.zoneDiameterMm ?? 0);
-  return { id: raw.id ?? crypto.randomUUID(), diskPosition: raw.diskPosition ?? "", antimicrobialName: raw.antimicrobialName ?? "", diskContent: raw.diskContent ?? "", zoneDiameterMm: Number.isFinite(zone) ? zone : 0, measurementMethod: "Manual ruler", comment: raw.comment ?? "", antibioticCode: raw.antibioticCode ?? "", antibioticName: raw.antibioticName ?? raw.antimicrobialName ?? "", discPotency: raw.discPotency ?? raw.diskContent ?? "", readerConfidence: raw.readerConfidence ?? "manual", measurementSource: raw.measurementSource ?? "manual_entry", manualEdited: raw.manualEdited ?? false, originalValue: raw.originalValue ?? null, correctedValue: raw.correctedValue ?? null, overrideReason: raw.overrideReason ?? "", reviewedBy: raw.reviewedBy ?? "", reviewedAt: raw.reviewedAt ?? "", reviewStatus: raw.reviewStatus ?? "accepted" };
+  const measurementMethod: MeasurementMethod = raw.measurementMethod === "Camera assisted" ? "Camera assisted" : "Manual ruler";
+  return { id: raw.id ?? crypto.randomUUID(), diskPosition: raw.diskPosition ?? "", antimicrobialName: raw.antimicrobialName ?? "", diskContent: raw.diskContent ?? "", zoneDiameterMm: Number.isFinite(zone) ? zone : 0, measurementMethod, comment: raw.comment ?? "", antibioticCode: raw.antibioticCode ?? "", antibioticName: raw.antibioticName ?? raw.antimicrobialName ?? "", discPotency: raw.discPotency ?? raw.diskContent ?? "", readerConfidence: raw.readerConfidence ?? "manual", measurementSource: raw.measurementSource ?? "manual_entry", manualEdited: raw.manualEdited ?? false, originalValue: raw.originalValue ?? null, correctedValue: raw.correctedValue ?? null, overrideReason: raw.overrideReason ?? "", reviewedBy: raw.reviewedBy ?? "", reviewedAt: raw.reviewedAt ?? "", reviewStatus: raw.reviewStatus ?? "accepted" };
 }
 
 function getStore(): StoreData {
@@ -188,6 +190,6 @@ export function exportZoneResultJson() {
 export function generateDraftReportText() {
   const { currentPlate, measurements } = getStore();
   if (!currentPlate) return "Draft: not for clinical release\nNo plate record available.";
-  const lines = ["Draft: not for clinical release", "Image-assisted disk diffusion reading is for supervised laboratory use", "Final AST interpretation requires authorised review", "In LIS-connected mode, DiskDiff Reader sends zone measurements and audit metadata. Final interpretation, expert rules, AMS governance, validation, and report release remain in the LIS unless explicitly configured otherwise.", `Accession: ${currentPlate.accessionNumber}`, `Specimen: ${currentPlate.specimenType}`, `Organism: ${currentPlate.organismName || "Not entered"}`, "", "Manual zone measurements:", ...measurements.map((m) => `${m.diskPosition || "N/A"}: ${m.antibioticName || m.antimicrobialName} ${m.discPotency || m.diskContent} = ${m.zoneDiameterMm} mm (${m.measurementMethod})`)];
+  const lines = ["Draft: not for clinical release", "Image-assisted disk diffusion reading is for supervised laboratory use", "Final AST interpretation requires authorised review", "In LIS-connected mode, DiskDiff Reader sends zone measurements and audit metadata. Final interpretation, expert rules, AMS governance, validation, and report release remain in the LIS unless explicitly configured otherwise.", `Accession: ${currentPlate.accessionNumber}`, `Specimen: ${currentPlate.specimenType}`, `Organism: ${currentPlate.organismName || "Not entered"}`, "", "Zone measurements:", ...measurements.map((m) => `${m.diskPosition || "N/A"}: ${m.antibioticName || m.antimicrobialName} ${m.discPotency || m.diskContent} = ${m.zoneDiameterMm} mm (${m.measurementMethod})`)];
   return lines.join("\n");
 }
